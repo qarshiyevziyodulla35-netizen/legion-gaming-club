@@ -2,7 +2,7 @@ const express = require('express');
 const path = require('path');
 const booking = require('./booking');
 
-function createServer(bot, adminChatId, adminTelegramId) {
+function createServer(bot, adminChatId, adminTelegramId, paymentCard) {
   const app = express();
   app.use(express.json());
 
@@ -76,6 +76,19 @@ function createServer(bot, adminChatId, adminTelegramId) {
     res.json({
       clubHourly: booking.CLUB_HOURLY_PRICE,
       rentalDaily: booking.RENTAL_DAILY_PRICE
+    });
+  });
+
+  // Har bir konsolning hozirgi jonli holati (bosh sahifa uchun)
+  app.get('/api/live-status', (req, res) => {
+    res.json(booking.getLiveConsoleStatus());
+  });
+
+  // To'lov uchun karta ma'lumotlari (frontendga)
+  app.get('/api/payment-info', (req, res) => {
+    res.json({
+      cardNumber: paymentCard && paymentCard.number || '',
+      cardOwner: paymentCard && paymentCard.owner || ''
     });
   });
 

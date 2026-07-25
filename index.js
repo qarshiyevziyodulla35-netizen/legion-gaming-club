@@ -7,6 +7,8 @@ const BOT_TOKEN = process.env.BOT_TOKEN;
 const WEB_APP_URL = process.env.WEB_APP_URL; // masalan: https://sizning-domen.uz
 const ADMIN_CHAT_ID = process.env.ADMIN_CHAT_ID; // xabarlar shu yerga boradi (guruh yoki shaxsiy chat)
 const ADMIN_TELEGRAM_ID = process.env.ADMIN_TELEGRAM_ID; // sizning shaxsiy Telegram ID'ingiz (/admin panelga kirish uchun)
+const PAYMENT_CARD_NUMBER = process.env.PAYMENT_CARD_NUMBER || '';
+const PAYMENT_CARD_OWNER = process.env.PAYMENT_CARD_OWNER || '';
 const PORT = process.env.PORT || 3000;
 
 if (!BOT_TOKEN) {
@@ -17,9 +19,12 @@ if (!WEB_APP_URL) {
   console.error('XATO: .env faylida WEB_APP_URL ko\'rsatilmagan (https bo\'lishi shart)');
   process.exit(1);
 }
+if (!PAYMENT_CARD_NUMBER) {
+  console.warn('OGOHLANTIRISH: PAYMENT_CARD_NUMBER kiritilmagan — mijozlar to\'lov uchun karta raqamini ko\'rmaydi!');
+}
 
 const bot = createBot(BOT_TOKEN, WEB_APP_URL, ADMIN_CHAT_ID, ADMIN_TELEGRAM_ID);
-const app = createServer(bot, ADMIN_CHAT_ID, ADMIN_TELEGRAM_ID);
+const app = createServer(bot, ADMIN_CHAT_ID, ADMIN_TELEGRAM_ID, { number: PAYMENT_CARD_NUMBER, owner: PAYMENT_CARD_OWNER });
 
 app.listen(PORT, () => {
   console.log(`Server ishga tushdi: http://localhost:${PORT}`);

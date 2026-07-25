@@ -217,11 +217,41 @@ function getAllOrders() {
   return { club: data.clubBookings, rental: data.rentalOrders };
 }
 
+// har bir konsolning HOZIRGI (shu daqiqadagi) holati — bosh sahifa uchun
+function getLiveConsoleStatus() {
+  const data = load();
+  const now = new Date();
+  const today = now.toISOString().slice(0, 10);
+  const nowHour = now.getHours() + now.getMinutes() / 60;
+
+  const club = data.clubConsoles.map(id => {
+    const active = data.clubBookings.find(b =>
+      b.consoleId === id && b.date === today && !['cancelled', 'expired'].includes(b.status) &&
+      nowHour >= b.startHour && nowHour < b.startHour + b.hours
+    );
+    return { consoleId: id, busy: !!active };
+  });
+
+  const rental = data.rentalConsoles.map(id => {
+    const active = data.rentalOrders.find(o => {
+      if (o.consoleId !== id || ['cancelled', 'expired'].includes(o.status)) return false;
+      const start = new Date(o.date + 'T00:00:00');
+      start.setHours(o.startHour);
+      const end = start.getTime() + o.hours * 3600 * 1000;
+      return now.getTime() >= start.getTime() && now.getTime() <= end;
+    });
+    return { consoleId: id, busy: !!active };
+  });
+
+  return { club, rental };
+}
+
 module.exports = {
   CLUB_HOURLY_PRICE, RENTAL_DAILY_PRICE,
   createClubBooking, createRentalOrder,
   confirmPayment, cancel, expireStalePayments,
   findFreeClubConsole, findFreeRentalConsole,
   getOrdersByTelegramId, getTodayAvailability, getStats,
-  getClubSchedule, getRentalSchedule, getAllOrders
+  getClubSchedule, getRentalSchedule, getAllOrders,
+  getLiveConsoleStatus
 };

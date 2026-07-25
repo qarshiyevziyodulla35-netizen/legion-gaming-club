@@ -8,7 +8,7 @@
 </head>
 <body>
   <div class="container">
-    <a href="index.html" class="back-link">← Orqaga</a>
+    <a href="index.html" onclick="return navHash(this)" class="back-link">← Orqaga</a>
     <h1 class="display" style="font-size:22px;margin:0 0 4px;">🏢 Klubga joy band qilish</h1>
     <p style="color:var(--text-muted);font-size:13px;margin:0 0 18px;">4 ta konsoldan bo'shini avtomatik tanlaymiz</p>
 
@@ -35,14 +35,18 @@
       <div class="row total"><span>Oldindan to'lov (50%)</span><span id="prepayPrice">-</span></div>
     </div>
 
+    <div class="price-box" id="cardBox" style="margin-top:10px;">
+      <div class="row"><span>To'lov kartasi</span><span id="cardNumber">yuklanmoqda...</span></div>
+    </div>
+
     <button class="submit-btn" onclick="submitBooking()">Band qilish</button>
     <div id="result"></div>
 
     <div class="bottom-nav">
-      <a href="index.html"><span class="icon">🏠</span>Bosh sahifa</a>
-      <a href="club.html" class="active"><span class="icon">🏢</span>Klub</a>
-      <a href="rental.html"><span class="icon">🚗</span>Ijara</a>
-      <a href="orders.html"><span class="icon">🧾</span>Buyurtmalarim</a>
+      <a href="index.html" onclick="return navHash(this)"><span class="icon">🏠</span>Bosh sahifa</a>
+      <a href="club.html" onclick="return navHash(this)" class="active"><span class="icon">🏢</span>Klub</a>
+      <a href="rental.html" onclick="return navHash(this)"><span class="icon">🚗</span>Ijara</a>
+      <a href="orders.html" onclick="return navHash(this)"><span class="icon">🧾</span>Buyurtmalarim</a>
     </div>
   </div>
 
@@ -52,7 +56,13 @@
     if (tg) {
       tg.ready(); tg.expand();
       tg.BackButton.show();
-      tg.BackButton.onClick(() => { window.location.href = 'index.html'; });
+      tg.BackButton.onClick(() => { window.location.href = 'index.html' + window.location.hash; });
+    }
+
+    // Sahifalar orasida o'tganda Telegram foydalanuvchi ma'lumotini (initData) yo'qotmaslik uchun
+    function navHash(el) {
+      window.location.href = el.getAttribute('href') + window.location.hash;
+      return false;
     }
 
     const HOURLY = 40000;
@@ -96,6 +106,16 @@
     document.getElementById('hours').addEventListener('change', updatePrice);
     updatePrice();
 
+    let paymentCardNumber = '';
+    let paymentCardOwner = '';
+    fetch('/api/payment-info').then(r => r.json()).then(d => {
+      paymentCardNumber = d.cardNumber;
+      paymentCardOwner = d.cardOwner;
+      document.getElementById('cardNumber').textContent = d.cardNumber
+        ? d.cardNumber + (d.cardOwner ? ' (' + d.cardOwner + ')' : '')
+        : "hali kiritilmagan";
+    }).catch(() => { document.getElementById('cardNumber').textContent = '—'; });
+
     async function submitBooking() {
       const date = document.getElementById('date').value;
       const startHour = document.getElementById('startHour').value;
@@ -119,7 +139,7 @@
       if (data.ok) {
         resultDiv.className = 'result-box';
         resultDiv.innerHTML = `✅ Band qilindi! Buyurtma #${data.booking.id}<br>
-          To'lov: ${data.booking.prepay.toLocaleString()} so'm ni ko'rsatilgan kartaga o'tkazing va chek screenshotini shu botga yuboring.`;
+          To'lov: ${data.booking.prepay.toLocaleString()} so'm ni <b>${paymentCardNumber || 'ko\'rsatilgan kartaga'}</b>${paymentCardOwner ? ' (' + paymentCardOwner + ')' : ''} o'tkazing va chek screenshotini shu botga yuboring.`;
       } else {
         resultDiv.className = 'result-box error';
         resultDiv.innerHTML = "❌ Kechirasiz, tanlangan vaqtda bo'sh konsol yo'q. Boshqa vaqt tanlang.";

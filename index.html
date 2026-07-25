@@ -16,14 +16,14 @@
       <div class="logo-badge">🎮</div>
     </div>
 
-    <a href="club.html" class="hero-card">
+    <a href="club.html" onclick="return navHash(this)" class="hero-card">
       <span class="hero-tag">🏢 Mashhur</span>
       <h1>Klubga joy band qiling</h1>
       <p>4 ta PS5 konsol, qulay o'rindiqlar. Bugun yoki istalgan kun uchun bron qiling.</p>
       <span class="hero-price">40 000 so'm / soat</span>
     </a>
 
-    <a href="rental.html" class="hero-card">
+    <a href="rental.html" onclick="return navHash(this)" class="hero-card">
       <span class="hero-tag">🏠 Yetkazib berish</span>
       <h1>Uyga buyurtma bering</h1>
       <p>PlayStation'ni to'g'ridan-to'g'ri uyingizga olib kelamiz.</p>
@@ -41,11 +41,16 @@
       </div>
     </div>
 
+    <div class="section-title">
+      <h2>Hozirgi holat</h2>
+    </div>
+    <div id="liveStatus" style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:6px;"></div>
+
     <div class="bottom-nav">
-      <a href="index.html" class="active"><span class="icon">🏠</span>Bosh sahifa</a>
-      <a href="club.html"><span class="icon">🏢</span>Klub</a>
-      <a href="rental.html"><span class="icon">🚗</span>Ijara</a>
-      <a href="orders.html"><span class="icon">🧾</span>Buyurtmalarim</a>
+      <a href="index.html" onclick="return navHash(this)" class="active"><span class="icon">🏠</span>Bosh sahifa</a>
+      <a href="club.html" onclick="return navHash(this)"><span class="icon">🏢</span>Klub</a>
+      <a href="rental.html" onclick="return navHash(this)"><span class="icon">🚗</span>Ijara</a>
+      <a href="orders.html" onclick="return navHash(this)"><span class="icon">🧾</span>Buyurtmalarim</a>
     </div>
   </div>
 
@@ -54,6 +59,12 @@
     const tg = window.Telegram && window.Telegram.WebApp;
     if (tg) { tg.ready(); tg.expand(); tg.BackButton.hide(); }
 
+    // Sahifalar orasida o'tganda Telegram foydalanuvchi ma'lumotini (initData) yo'qotmaslik uchun
+    function navHash(el) {
+      window.location.href = el.getAttribute('href') + window.location.hash;
+      return false;
+    }
+
     fetch('/api/availability')
       .then(r => r.json())
       .then(d => {
@@ -61,6 +72,17 @@
           `Klub: ${d.freeClub}/${d.totalClub} · Ijara: ${d.freeRental}/${d.totalRental}`;
       })
       .catch(() => { document.getElementById('freeCount').textContent = '—'; });
+
+    fetch('/api/live-status')
+      .then(r => r.json())
+      .then(d => {
+        const badge = (label, busy) => `<div style="padding:8px 12px;border-radius:10px;background:${busy ? 'rgba(255,84,112,0.15)' : 'rgba(80,200,120,0.15)'};color:${busy ? '#ff8fa3' : '#7be3a0'};font-size:12px;font-weight:600;">${label}: ${busy ? '🔴 band' : '🟢 bo\'sh'}</div>`;
+        let html = '';
+        d.club.forEach((c, i) => html += badge('Klub #' + (i + 1), c.busy));
+        d.rental.forEach((c, i) => html += badge('Ijara #' + (i + 1), c.busy));
+        document.getElementById('liveStatus').innerHTML = html;
+      })
+      .catch(() => {});
   </script>
 </body>
 </html>

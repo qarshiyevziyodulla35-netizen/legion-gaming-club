@@ -8,16 +8,16 @@
 </head>
 <body>
   <div class="container">
-    <a href="index.html" class="back-link">← Orqaga</a>
+    <a href="index.html" onclick="return navHash(this)" class="back-link">← Orqaga</a>
     <h1 class="display" style="font-size:22px;margin:0 0 16px;">🧾 Mening buyurtmalarim</h1>
 
     <div id="list"><div class="empty-state">Yuklanmoqda...</div></div>
 
     <div class="bottom-nav">
-      <a href="index.html"><span class="icon">🏠</span>Bosh sahifa</a>
-      <a href="club.html"><span class="icon">🏢</span>Klub</a>
-      <a href="rental.html"><span class="icon">🚗</span>Ijara</a>
-      <a href="orders.html" class="active"><span class="icon">🧾</span>Buyurtmalarim</a>
+      <a href="index.html" onclick="return navHash(this)"><span class="icon">🏠</span>Bosh sahifa</a>
+      <a href="club.html" onclick="return navHash(this)"><span class="icon">🏢</span>Klub</a>
+      <a href="rental.html" onclick="return navHash(this)"><span class="icon">🚗</span>Ijara</a>
+      <a href="orders.html" onclick="return navHash(this)" class="active"><span class="icon">🧾</span>Buyurtmalarim</a>
     </div>
   </div>
 
@@ -27,7 +27,13 @@
     if (tg) {
       tg.ready(); tg.expand();
       tg.BackButton.show();
-      tg.BackButton.onClick(() => { window.location.href = 'index.html'; });
+      tg.BackButton.onClick(() => { window.location.href = 'index.html' + window.location.hash; });
+    }
+
+    // Sahifalar orasida o'tganda Telegram foydalanuvchi ma'lumotini (initData) yo'qotmaslik uchun
+    function navHash(el) {
+      window.location.href = el.getAttribute('href') + window.location.hash;
+      return false;
     }
     const telegramId = tg && tg.initDataUnsafe && tg.initDataUnsafe.user ? tg.initDataUnsafe.user.id : null;
 
