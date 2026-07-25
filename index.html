@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+<html lang="uz">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>PlayStation Klub</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <div class="container">
+    <div class="top-header">
+      <div>
+        <p class="greeting">Xush kelibsiz 👋</p>
+        <p class="greeting"><b>PlayStation Klub</b></p>
+      </div>
+      <div class="logo-badge">🎮</div>
+    </div>
+
+    <a href="club.html" class="hero-card">
+      <span class="hero-tag">🏢 Mashhur</span>
+      <h1>Klubga joy band qiling</h1>
+      <p>4 ta PS5 konsol, qulay o'rindiqlar. Bugun yoki istalgan kun uchun bron qiling.</p>
+      <span class="hero-price">40 000 so'm / soat</span>
+    </a>
+
+    <a href="rental.html" class="hero-card">
+      <span class="hero-tag">🏠 Yetkazib berish</span>
+      <h1>Uyga buyurtma bering</h1>
+      <p>PlayStation'ni to'g'ridan-to'g'ri uyingizga olib kelamiz.</p>
+      <span class="hero-price">300 000 so'm / 24 soat</span>
+    </a>
+
+    <div class="section-title">
+      <h2>Bandligimiz</h2>
+    </div>
+    <div class="stat-card">
+      <div class="ring" style="--pct: 40%"></div>
+      <div>
+        <p class="label">Bugun bo'sh konsollar</p>
+        <p class="value" id="freeCount">Yuklanmoqda...</p>
+      </div>
+    </div>
+
+    <div class="bottom-nav">
+      <a href="index.html" class="active"><span class="icon">🏠</span>Bosh sahifa</a>
+      <a href="club.html"><span class="icon">🏢</span>Klub</a>
+      <a href="rental.html"><span class="icon">🚗</span>Ijara</a>
+      <a href="orders.html"><span class="icon">🧾</span>Buyurtmalarim</a>
+    </div>
+  </div>
+
+  <script src="https://telegram.org/js/telegram-web-app.js"></script>
+  <script>
+    const tg = window.Telegram && window.Telegram.WebApp;
+    if (tg) { tg.ready(); tg.expand(); }
+
+    fetch('/api/availability')
+      .then(r => r.json())
+      .then(d => {
+        document.getElementById('freeCount').textContent =
+          `Klub: ${d.freeClub}/${d.totalClub} · Ijara: ${d.freeRental}/${d.totalRental}`;
+      })
+      .catch(() => { document.getElementById('freeCount').textContent = '—'; });
+  </script>
+</body>
+</html>
