@@ -17,6 +17,7 @@
 
     <label>Sana</label>
     <input type="date" id="date">
+    <p id="scheduleNote" style="font-size:12px;color:var(--text-muted);margin:6px 0 0;">Bandlikni tekshirish...</p>
 
     <label>Boshlanish vaqti</label>
     <select id="startHour"></select>
@@ -65,6 +66,24 @@
       startHourSel.appendChild(opt);
     }
     document.getElementById('date').valueAsDate = new Date();
+
+    async function loadSchedule() {
+      const date = document.getElementById('date').value;
+      const note = document.getElementById('scheduleNote');
+      note.textContent = 'Bandlikni tekshirish...';
+      try {
+        const res = await fetch('/api/schedule?kind=rental&date=' + date);
+        const schedule = await res.json();
+        const freeCount = schedule.filter(s => !s.busy).length;
+        note.textContent = freeCount > 0
+          ? `Tanlangan sanada ${freeCount}/${schedule.length} konsol bo'sh ✅`
+          : "Tanlangan sanada barcha konsollar band ❌";
+      } catch (e) {
+        note.textContent = '';
+      }
+    }
+    document.getElementById('date').addEventListener('change', loadSchedule);
+    loadSchedule();
 
     function updatePrice() {
       const days = Number(document.getElementById('days').value);

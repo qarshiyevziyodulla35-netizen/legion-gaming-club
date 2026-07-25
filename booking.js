@@ -179,10 +179,49 @@ function getStats() {
   };
 }
 
+// klub jadvali: har bir soat uchun nechta konsol bo'sh (9:00-22:00)
+function getClubSchedule(date) {
+  const data = load();
+  const active = data.clubBookings.filter(b => b.date === date && !['cancelled', 'expired'].includes(b.status));
+  const hoursArr = [];
+  for (let h = 9; h <= 22; h++) {
+    const busy = new Set(
+      active.filter(b => overlaps(b.startHour, b.startHour + b.hours, h, h + 1)).map(b => b.consoleId)
+    );
+    hoursArr.push({ hour: h, free: data.clubConsoles.length - busy.size, total: data.clubConsoles.length });
+  }
+  return hoursArr;
+}
+
+// ijara jadvali: tanlangan sanada har bir ijara konsoli band/bo'sh
+function getRentalSchedule(date) {
+  const data = load();
+  const active = data.rentalOrders.filter(o => !['cancelled', 'expired'].includes(o.status));
+  const checkMoment = new Date(date + 'T12:00:00').getTime();
+
+  return data.rentalConsoles.map(consoleId => {
+    const busyOrder = active.find(o => {
+      if (o.consoleId !== consoleId) return false;
+      const start = new Date(o.date + 'T00:00:00');
+      start.setHours(o.startHour);
+      const end = start.getTime() + o.hours * 3600 * 1000;
+      return checkMoment >= start.getTime() && checkMoment <= end;
+    });
+    return { consoleId, busy: !!busyOrder };
+  });
+}
+
+// admin uchun: barcha buyurtmalar (klub + ijara)
+function getAllOrders() {
+  const data = load();
+  return { club: data.clubBookings, rental: data.rentalOrders };
+}
+
 module.exports = {
   CLUB_HOURLY_PRICE, RENTAL_DAILY_PRICE,
   createClubBooking, createRentalOrder,
   confirmPayment, cancel, expireStalePayments,
   findFreeClubConsole, findFreeRentalConsole,
-  getOrdersByTelegramId, getTodayAvailability, getStats
+  getOrdersByTelegramId, getTodayAvailability, getStats,
+  getClubSchedule, getRentalSchedule, getAllOrders
 };

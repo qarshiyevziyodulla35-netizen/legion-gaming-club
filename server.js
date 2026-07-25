@@ -2,7 +2,7 @@ const express = require('express');
 const path = require('path');
 const booking = require('./booking');
 
-function createServer(bot, adminChatId) {
+function createServer(bot, adminChatId, adminTelegramId) {
   const app = express();
   app.use(express.json());
 
@@ -12,6 +12,7 @@ function createServer(bot, adminChatId) {
   app.get('/club.html', (req, res) => res.sendFile(path.join(__dirname, 'club.html')));
   app.get('/rental.html', (req, res) => res.sendFile(path.join(__dirname, 'rental.html')));
   app.get('/orders.html', (req, res) => res.sendFile(path.join(__dirname, 'orders.html')));
+  app.get('/admin.html', (req, res) => res.sendFile(path.join(__dirname, 'admin.html')));
   app.get('/style.css', (req, res) => res.sendFile(path.join(__dirname, 'style.css')));
 
   // Klubga band qilish
@@ -50,6 +51,24 @@ function createServer(bot, adminChatId) {
   // Bugungi bo'sh konsollar (dashboard uchun)
   app.get('/api/availability', (req, res) => {
     res.json(booking.getTodayAvailability());
+  });
+
+  // Tanlangan sana uchun bandlik jadvali (klub: soatlik, ijara: kunlik)
+  app.get('/api/schedule', (req, res) => {
+    const { kind, date } = req.query;
+    if (!kind || !date) return res.status(400).json({ ok: false, error: 'missing_fields' });
+    if (kind === 'club') return res.json(booking.getClubSchedule(date));
+    if (kind === 'rental') return res.json(booking.getRentalSchedule(date));
+    res.status(400).json({ ok: false, error: 'bad_kind' });
+  });
+
+  // Admin uchun: barcha buyurtmalar (faqat admin telegramId bilan)
+  app.get('/api/all-orders', (req, res) => {
+    const { telegramId } = req.query;
+    if (!adminTelegramId || String(telegramId) !== String(adminTelegramId)) {
+      return res.status(403).json({ ok: false, error: 'forbidden' });
+    }
+    res.json(booking.getAllOrders());
   });
 
   // Narxlarni frontendga berish

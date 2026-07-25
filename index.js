@@ -5,7 +5,8 @@ const booking = require('./booking');
 
 const BOT_TOKEN = process.env.BOT_TOKEN;
 const WEB_APP_URL = process.env.WEB_APP_URL; // masalan: https://sizning-domen.uz
-const ADMIN_CHAT_ID = process.env.ADMIN_CHAT_ID;
+const ADMIN_CHAT_ID = process.env.ADMIN_CHAT_ID; // xabarlar shu yerga boradi (guruh yoki shaxsiy chat)
+const ADMIN_TELEGRAM_ID = process.env.ADMIN_TELEGRAM_ID; // sizning shaxsiy Telegram ID'ingiz (/admin panelga kirish uchun)
 const PORT = process.env.PORT || 3000;
 
 if (!BOT_TOKEN) {
@@ -17,8 +18,8 @@ if (!WEB_APP_URL) {
   process.exit(1);
 }
 
-const bot = createBot(BOT_TOKEN, WEB_APP_URL, ADMIN_CHAT_ID);
-const app = createServer(bot, ADMIN_CHAT_ID);
+const bot = createBot(BOT_TOKEN, WEB_APP_URL, ADMIN_CHAT_ID, ADMIN_TELEGRAM_ID);
+const app = createServer(bot, ADMIN_CHAT_ID, ADMIN_TELEGRAM_ID);
 
 app.listen(PORT, () => {
   console.log(`Server ishga tushdi: http://localhost:${PORT}`);

@@ -1,7 +1,7 @@
 const { Telegraf, Markup } = require('telegraf');
 const booking = require('./booking');
 
-function createBot(token, webAppUrl, adminChatId) {
+function createBot(token, webAppUrl, adminChatId, adminTelegramId) {
   const bot = new Telegraf(token);
 
   bot.start((ctx) => {
@@ -13,9 +13,15 @@ function createBot(token, webAppUrl, adminChatId) {
     );
   });
 
+  // Har qanday chat/guruhda ishlaydi — shu chatning ID raqamini beradi
+  // (guruh yaratib, botni qo'shgandan keyin shu buyruqni yozib guruh ID'sini bilib oling)
+  bot.command('groupid', (ctx) => {
+    ctx.reply(`Bu chatning ID raqami:\n\`${ctx.chat.id}\`\n\nShu raqamni ADMIN_CHAT_ID sifatida .env fayliga kiriting.`, { parse_mode: 'Markdown' });
+  });
+
   // Faqat admin uchun: umumiy statistika
   bot.command('stats', (ctx) => {
-    if (String(ctx.chat.id) !== String(adminChatId)) return;
+    if (!isAdminChat(ctx, adminChatId, adminTelegramId)) return;
     const s = booking.getStats();
     ctx.reply(
       `📊 Statistika\n\n` +
@@ -26,6 +32,16 @@ function createBot(token, webAppUrl, adminChatId) {
       `⏳ To'lov kutilayotgan: ${s.awaitingPayment} ta`
     );
   });
+
+  // Faqat admin uchun: barcha buyurtmalarni ko'rsatuvchi Mini App panelni ochish
+  bot.command('admin', (ctx) => {
+    if (!isAdminChat(ctx, adminChatId, adminTelegramId)) return;
+    ctx.reply(
+      "Admin panel:",
+      Markup.keyboard([[Markup.button.webApp('📋 Barcha buyurtmalar', webAppUrl.replace(/\/?$/, '/admin.html'))]]).resize()
+    );
+  });
+
   // Format: mijoz avval "/pay <kind>_<id>" yozadi yoki oddiy rasm yuborsa, oxirgi buyurtmasiga bog'lanadi (soddalashtirilgan versiya)
   bot.on('photo', async (ctx) => {
     await ctx.reply("To'lov cheki qabul qilindi ✅ Admin tekshirib, tez orada tasdiqlaydi.");
@@ -39,6 +55,7 @@ function createBot(token, webAppUrl, adminChatId) {
 
   // Admin "Tasdiqlash" / "Bekor qilish" tugmalarini bosganda
   bot.on('callback_query', async (ctx) => {
+    if (!isAdminChat(ctx, adminChatId, adminTelegramId)) return ctx.answerCbQuery();
     const data = ctx.callbackQuery.data; // masalan: confirm_club_3
     const [action, kind, idStr] = data.split('_');
     const id = Number(idStr);
@@ -71,6 +88,12 @@ function createBot(token, webAppUrl, adminChatId) {
   });
 
   return bot;
+}
+
+// chat admin guruhi/shaxsi ekanligini tekshiradi
+function isAdminChat(ctx, adminChatId, adminTelegramId) {
+  const chatId = String(ctx.chat.id);
+  return chatId === String(adminChatId) || chatId === String(adminTelegramId);
 }
 
 module.exports = { createBot };

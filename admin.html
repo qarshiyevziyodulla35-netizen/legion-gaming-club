@@ -1,0 +1,101 @@
+<!DOCTYPE html>
+<html lang="uz">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Admin panel</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <div class="container">
+    <h1 class="display" style="font-size:22px;margin:0 0 4px;">📋 Barcha buyurtmalar</h1>
+    <p style="color:var(--text-muted);font-size:13px;margin:0 0 18px;">Klub va ijara bo'yicha to'liq ro'yxat</p>
+
+    <div style="display:flex;gap:8px;margin-bottom:14px;">
+      <button class="filter-btn active" data-filter="all">Hammasi</button>
+      <button class="filter-btn" data-filter="club">🏢 Klub</button>
+      <button class="filter-btn" data-filter="rental">🏠 Ijara</button>
+    </div>
+
+    <div id="list"><div class="empty-state">Yuklanmoqda...</div></div>
+  </div>
+
+  <style>
+    .filter-btn {
+      flex: 1;
+      padding: 10px;
+      border-radius: 12px;
+      border: 1px solid var(--border);
+      background: var(--card);
+      color: var(--text-muted);
+      font-size: 13px;
+      font-family: 'Inter', sans-serif;
+    }
+    .filter-btn.active { background: var(--gold); color: #2a0f16; font-weight: 600; border-color: transparent; }
+  </style>
+
+  <script src="https://telegram.org/js/telegram-web-app.js"></script>
+  <script>
+    const tg = window.Telegram && window.Telegram.WebApp;
+    if (tg) { tg.ready(); tg.expand(); }
+    const telegramId = tg && tg.initDataUnsafe && tg.initDataUnsafe.user ? tg.initDataUnsafe.user.id : null;
+
+    const statusLabels = {
+      awaiting_payment: "To'lov kutilmoqda",
+      confirmed: "Tasdiqlangan",
+      cancelled: "Bekor qilingan",
+      expired: "Muddati o'tgan"
+    };
+
+    let allItems = [];
+    let currentFilter = 'all';
+
+    async function loadOrders() {
+      const list = document.getElementById('list');
+      if (!telegramId) {
+        list.innerHTML = '<div class="empty-state">Botni Telegram ichidan admin sifatida oching</div>';
+        return;
+      }
+      const res = await fetch('/api/all-orders?telegramId=' + telegramId);
+      if (res.status === 403) {
+        list.innerHTML = '<div class="empty-state">Sizda bu panelga kirish huquqi yo\'q</div>';
+        return;
+      }
+      const data = await res.json();
+      allItems = [...data.club.map(x => ({...x, kind: 'club'})), ...data.rental.map(x => ({...x, kind: 'rental'}))]
+        .sort((a, b) => b.createdAt - a.createdAt);
+      render();
+    }
+
+    function render() {
+      const list = document.getElementById('list');
+      const items = currentFilter === 'all' ? allItems : allItems.filter(i => i.kind === currentFilter);
+      if (items.length === 0) {
+        list.innerHTML = '<div class="empty-state">Buyurtma topilmadi</div>';
+        return;
+      }
+      list.innerHTML = items.map(o => `
+        <div class="order-card">
+          <div class="top-row">
+            <span class="kind">${o.kind === 'club' ? '🏢 Klub' : '🏠 Ijara'} · #${o.id}</span>
+            <span class="status ${o.status}">${statusLabels[o.status] || o.status}</span>
+          </div>
+          <div class="meta">${o.date}, ${o.startHour}:00 · ${o.hours} soat · konsol #${o.consoleId}</div>
+          <div class="meta">${o.kind === 'rental' ? (o.address + ' · ') : ''}📞 ${o.phone} · ${o.total.toLocaleString()} so'm</div>
+        </div>
+      `).join('');
+    }
+
+    document.querySelectorAll('.filter-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+        currentFilter = btn.dataset.filter;
+        render();
+      });
+    });
+
+    loadOrders();
+  </script>
+</body>
+</html>

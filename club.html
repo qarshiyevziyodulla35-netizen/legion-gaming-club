@@ -17,6 +17,7 @@
 
     <label>Boshlanish vaqti</label>
     <select id="startHour"></select>
+    <p id="scheduleNote" style="font-size:12px;color:var(--text-muted);margin:6px 0 0;">Bandlikni tekshirish...</p>
 
     <label>Necha soat</label>
     <select id="hours">
@@ -62,6 +63,29 @@
       startHourSel.appendChild(opt);
     }
     document.getElementById('date').valueAsDate = new Date();
+
+    async function loadSchedule() {
+      const date = document.getElementById('date').value;
+      const note = document.getElementById('scheduleNote');
+      note.textContent = 'Bandlikni tekshirish...';
+      try {
+        const res = await fetch('/api/schedule?kind=club&date=' + date);
+        const schedule = await res.json();
+        const busyHours = schedule.filter(s => s.free === 0).map(s => s.hour + ':00');
+        Array.from(startHourSel.options).forEach(opt => {
+          const slot = schedule.find(s => s.hour === Number(opt.value));
+          opt.disabled = slot && slot.free === 0;
+          opt.textContent = opt.value + ':00' + (slot && slot.free === 0 ? ' (band)' : '');
+        });
+        note.textContent = busyHours.length
+          ? `Band soatlar: ${busyHours.join(', ')}`
+          : "Tanlangan kunda hamma soat bo'sh ✅";
+      } catch (e) {
+        note.textContent = '';
+      }
+    }
+    document.getElementById('date').addEventListener('change', loadSchedule);
+    loadSchedule();
 
     function updatePrice() {
       const hours = Number(document.getElementById('hours').value);
