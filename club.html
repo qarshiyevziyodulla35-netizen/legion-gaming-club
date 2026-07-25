@@ -1,0 +1,94 @@
+<!DOCTYPE html>
+<html lang="uz">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Klubga band qilish</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <div class="container">
+    <a href="index.html" class="back-link">← Orqaga</a>
+    <h1>🏢 Klubga joy band qilish</h1>
+
+    <label>Sana</label>
+    <input type="date" id="date">
+
+    <label>Boshlanish vaqti</label>
+    <select id="startHour"></select>
+
+    <label>Necha soat</label>
+    <select id="hours">
+      <option value="1">1 soat</option>
+      <option value="2">2 soat</option>
+      <option value="3">3 soat</option>
+      <option value="4">4 soat</option>
+    </select>
+
+    <label>Telefon raqam</label>
+    <input type="tel" id="phone" placeholder="+998 90 123 45 67">
+
+    <div class="price-box">
+      <div class="row"><span>Jami narx</span><span id="totalPrice">-</span></div>
+      <div class="row total"><span>Oldindan to'lov (50%)</span><span id="prepayPrice">-</span></div>
+    </div>
+
+    <button class="submit-btn" onclick="submitBooking()">Band qilish</button>
+    <div id="result"></div>
+  </div>
+
+  <script src="https://telegram.org/js/telegram-web-app.js"></script>
+  <script>
+    const tg = window.Telegram && window.Telegram.WebApp;
+    if (tg) { tg.ready(); tg.expand(); }
+
+    const HOURLY = 40000;
+    const startHourSel = document.getElementById('startHour');
+    for (let h = 9; h <= 22; h++) {
+      const opt = document.createElement('option');
+      opt.value = h; opt.textContent = h + ':00';
+      startHourSel.appendChild(opt);
+    }
+    document.getElementById('date').valueAsDate = new Date();
+
+    function updatePrice() {
+      const hours = Number(document.getElementById('hours').value);
+      const total = HOURLY * hours;
+      document.getElementById('totalPrice').textContent = total.toLocaleString() + " so'm";
+      document.getElementById('prepayPrice').textContent = Math.round(total / 2).toLocaleString() + " so'm";
+    }
+    document.getElementById('hours').addEventListener('change', updatePrice);
+    updatePrice();
+
+    async function submitBooking() {
+      const date = document.getElementById('date').value;
+      const startHour = document.getElementById('startHour').value;
+      const hours = document.getElementById('hours').value;
+      const phone = document.getElementById('phone').value;
+      const telegramId = tg && tg.initDataUnsafe && tg.initDataUnsafe.user ? tg.initDataUnsafe.user.id : null;
+
+      if (!date || !phone) {
+        alert("Iltimos, sana va telefon raqamni kiriting");
+        return;
+      }
+
+      const res = await fetch('/api/club-booking', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ date, startHour, hours, phone, telegramId })
+      });
+      const data = await res.json();
+      const resultDiv = document.getElementById('result');
+
+      if (data.ok) {
+        resultDiv.className = 'result-box';
+        resultDiv.innerHTML = `✅ Band qilindi! Buyurtma #${data.booking.id}<br>
+          To'lov: ${data.booking.prepay.toLocaleString()} so'm ni ko'rsatilgan kartaga o'tkazing va chek screenshotini shu botga yuboring.`;
+      } else {
+        resultDiv.className = 'result-box error';
+        resultDiv.innerHTML = "❌ Kechirasiz, tanlangan vaqtda bo'sh konsol yo'q. Boshqa vaqt tanlang.";
+      }
+    }
+  </script>
+</body>
+</html>

@@ -1,0 +1,99 @@
+<!DOCTYPE html>
+<html lang="uz">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Uyga buyurtma</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <div class="container">
+    <a href="index.html" class="back-link">← Orqaga</a>
+    <h1>🏠 Uyga buyurtma qilish</h1>
+
+    <label>Manzil</label>
+    <input type="text" id="address" placeholder="Shahar, ko'cha, uy raqami">
+
+    <label>Sana</label>
+    <input type="date" id="date">
+
+    <label>Boshlanish vaqti</label>
+    <select id="startHour"></select>
+
+    <label>Necha kun</label>
+    <select id="days">
+      <option value="1">1 kun (24 soat)</option>
+      <option value="2">2 kun</option>
+      <option value="3">3 kun</option>
+      <option value="7">7 kun</option>
+    </select>
+
+    <label>Telefon raqam</label>
+    <input type="tel" id="phone" placeholder="+998 90 123 45 67">
+
+    <div class="price-box">
+      <div class="row"><span>Jami narx</span><span id="totalPrice">-</span></div>
+      <div class="row total"><span>Oldindan to'lov (garov, 100%)</span><span id="prepayPrice">-</span></div>
+    </div>
+
+    <button class="submit-btn" onclick="submitOrder()">Buyurtma berish</button>
+    <div id="result"></div>
+  </div>
+
+  <script src="https://telegram.org/js/telegram-web-app.js"></script>
+  <script>
+    const tg = window.Telegram && window.Telegram.WebApp;
+    if (tg) { tg.ready(); tg.expand(); }
+
+    const DAILY = 300000;
+    const startHourSel = document.getElementById('startHour');
+    for (let h = 9; h <= 22; h++) {
+      const opt = document.createElement('option');
+      opt.value = h; opt.textContent = h + ':00';
+      startHourSel.appendChild(opt);
+    }
+    document.getElementById('date').valueAsDate = new Date();
+
+    function updatePrice() {
+      const days = Number(document.getElementById('days').value);
+      const total = DAILY * days;
+      document.getElementById('totalPrice').textContent = total.toLocaleString() + " so'm";
+      document.getElementById('prepayPrice').textContent = total.toLocaleString() + " so'm";
+    }
+    document.getElementById('days').addEventListener('change', updatePrice);
+    updatePrice();
+
+    async function submitOrder() {
+      const address = document.getElementById('address').value;
+      const date = document.getElementById('date').value;
+      const startHour = document.getElementById('startHour').value;
+      const days = Number(document.getElementById('days').value);
+      const hours = days * 24;
+      const phone = document.getElementById('phone').value;
+      const telegramId = tg && tg.initDataUnsafe && tg.initDataUnsafe.user ? tg.initDataUnsafe.user.id : null;
+
+      if (!address || !date || !phone) {
+        alert("Iltimos, barcha maydonlarni to'ldiring");
+        return;
+      }
+
+      const res = await fetch('/api/rental-order', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ date, startHour, hours, address, phone, telegramId })
+      });
+      const data = await res.json();
+      const resultDiv = document.getElementById('result');
+
+      if (data.ok) {
+        resultDiv.className = 'result-box';
+        resultDiv.innerHTML = `✅ Buyurtma qabul qilindi! #${data.order.id}<br>
+          To'lov: ${data.order.prepay.toLocaleString()} so'm ni ko'rsatilgan kartaga o'tkazing va chek screenshotini shu botga yuboring.`;
+      } else {
+        resultDiv.className = 'result-box error';
+        resultDiv.innerHTML = "❌ Kechirasiz, tanlangan sanada bo'sh konsol yo'q. Boshqa sana tanlang.";
+      }
+    }
+  </script>
+</body>
+</html>

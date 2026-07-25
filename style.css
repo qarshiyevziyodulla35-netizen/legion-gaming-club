@@ -1,0 +1,68 @@
+* { box-sizing: border-box; }
+body {
+  margin: 0;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  background: var(--tg-theme-bg-color, #0f1117);
+  color: var(--tg-theme-text-color, #ffffff);
+  padding: 20px;
+}
+.container { max-width: 480px; margin: 0 auto; }
+h1 { font-size: 24px; margin-bottom: 4px; }
+.subtitle { opacity: 0.7; margin-bottom: 24px; }
+
+.big-button {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 4px;
+  background: #1c1f2a;
+  border: 1px solid #2a2e3d;
+  border-radius: 16px;
+  padding: 20px;
+  margin-bottom: 14px;
+  text-decoration: none;
+  color: inherit;
+}
+.big-button .icon { font-size: 28px; }
+.big-button span:nth-child(2) { font-size: 18px; font-weight: 600; }
+.big-button .hint { opacity: 0.6; font-size: 14px; }
+
+label { display: block; margin: 16px 0 6px; font-size: 14px; opacity: 0.8; }
+input, select {
+  width: 100%;
+  padding: 12px;
+  border-radius: 10px;
+  border: 1px solid #2a2e3d;
+  background: #1c1f2a;
+  color: inherit;
+  font-size: 16px;
+}
+.price-box {
+  margin-top: 20px;
+  padding: 16px;
+  background: #1c1f2a;
+  border-radius: 12px;
+}
+.price-box .row { display: flex; justify-content: space-between; margin-bottom: 6px; }
+.price-box .total { font-weight: 700; font-size: 18px; border-top: 1px solid #2a2e3d; padding-top: 8px; }
+
+.submit-btn {
+  width: 100%;
+  padding: 16px;
+  margin-top: 20px;
+  border: none;
+  border-radius: 12px;
+  background: #2ea6ff;
+  color: white;
+  font-size: 16px;
+  font-weight: 600;
+}
+.back-link { display: inline-block; margin-bottom: 16px; color: #2ea6ff; text-decoration: none; }
+.result-box {
+  margin-top: 20px;
+  padding: 16px;
+  border-radius: 12px;
+  background: #1c2b1c;
+  border: 1px solid #2c5c2c;
+}
+.result-box.error { background: #2b1c1c; border-color: #5c2c2c; }
