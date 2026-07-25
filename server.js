@@ -8,6 +8,7 @@ function createServer(bot, adminChatId) {
 
   // Statik sahifalar (papkasiz, hammasi bitta darajada joylashgan)
   app.get('/', (req, res) => res.sendFile(path.join(__dirname, 'index.html')));
+  app.get('/index.html', (req, res) => res.sendFile(path.join(__dirname, 'index.html')));
   app.get('/club.html', (req, res) => res.sendFile(path.join(__dirname, 'club.html')));
   app.get('/rental.html', (req, res) => res.sendFile(path.join(__dirname, 'rental.html')));
   app.get('/orders.html', (req, res) => res.sendFile(path.join(__dirname, 'orders.html')));
