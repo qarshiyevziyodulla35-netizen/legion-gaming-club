@@ -1,7 +1,10 @@
 const fs = require('fs');
 const path = require('path');
 
-const DB_PATH = path.join(__dirname, 'data.json');
+// DATA_DIR beriladigan bo'lsa (masalan Railway Volume yo'li), ma'lumotlar shu yerda saqlanadi —
+// bo'lmasa loyihaning o'z papkasida saqlanadi (redeploy paytida bu o'chib ketishi mumkin!)
+const DATA_DIR = process.env.DATA_DIR || __dirname;
+const DB_PATH = path.join(DATA_DIR, 'data.json');
 
 function defaultData() {
   return {
@@ -14,6 +17,7 @@ function defaultData() {
 }
 
 function load() {
+  if (!fs.existsSync(DATA_DIR)) fs.mkdirSync(DATA_DIR, { recursive: true });
   if (!fs.existsSync(DB_PATH)) {
     save(defaultData());
   }

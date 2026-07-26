@@ -108,7 +108,6 @@
       grid.innerHTML = consoleSchedule.map(c => `
         <div class="console-card ${c.consoleId === selectedConsole ? 'selected' : ''}" onclick="selectConsole(${c.consoleId})">
           <div class="n">🎮 Konsol ${c.consoleId}</div>
-          <div class="s">${c.busyHours.length ? c.busyHours.length + ' soat band' : "Butun kun bo'sh"}</div>
         </div>
       `).join('');
     }

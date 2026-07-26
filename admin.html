@@ -8,60 +8,72 @@
 </head>
 <body>
   <div class="container">
-    <h1 class="display" style="font-size:22px;margin:0 0 4px;">📋 Admin panel</h1>
-    <p style="color:var(--text-muted);font-size:13px;margin:0 0 18px;">Buyurtmalar, moliya va oflayn bandlik</p>
 
-    <div class="section-title"><h2>💰 Moliya</h2></div>
-    <div id="statsBox" class="price-box">Yuklanmoqda...</div>
-
-    <div class="section-title"><h2>➕ Oflayn bandlik qo'shish</h2></div>
-    <p style="color:var(--text-muted);font-size:12px;margin:0 0 10px;">Joyida (naqd/karta) to'lagan mijozni shu yerdan kiriting — avtomatik tasdiqlangan hisoblanadi</p>
-
-    <label>Turi</label>
-    <select id="offKind">
-      <option value="club">🏢 Klub</option>
-      <option value="rental">🏠 Ijara</option>
-    </select>
-
-    <label>Konsol</label>
-    <select id="offConsole"></select>
-
-    <label>Sana</label>
-    <input type="date" id="offDate">
-
-    <label>Boshlanish vaqti</label>
-    <select id="offStartHour"></select>
-
-    <label id="offHoursLabel">Necha soat</label>
-    <select id="offHours">
-      <option value="1">1 soat</option>
-      <option value="2">2 soat</option>
-      <option value="3">3 soat</option>
-      <option value="4">4 soat</option>
-    </select>
-
-    <div id="offAddressWrap" style="display:none;">
-      <label>Manzil</label>
-      <input type="text" id="offAddress" placeholder="Manzil">
+    <div id="loginScreen">
+      <h1 class="display" style="font-size:22px;margin:0 0 4px;">🔒 Admin panel</h1>
+      <p style="color:var(--text-muted);font-size:13px;margin:0 0 18px;">Kirish uchun parolni kiriting</p>
+      <label>Parol</label>
+      <input type="password" id="passwordInput" placeholder="Parol">
+      <button class="submit-btn" onclick="tryLogin()">Kirish</button>
+      <div id="loginError"></div>
     </div>
 
-    <label>Telefon (ixtiyoriy)</label>
-    <input type="tel" id="offPhone" placeholder="+998 90 123 45 67">
+    <div id="mainScreen" style="display:none;">
+      <h1 class="display" style="font-size:22px;margin:0 0 4px;">📋 Admin panel</h1>
+      <p style="color:var(--text-muted);font-size:13px;margin:0 0 18px;">Buyurtmalar, moliya va oflayn bandlik</p>
 
-    <label>Qabul qilingan summa (ixtiyoriy, bo'sh qoldirsangiz standart narx olinadi)</label>
-    <input type="number" id="offPaidAmount" placeholder="masalan: 35000">
+      <div class="section-title"><h2>💰 Moliya</h2></div>
+      <div id="statsBox" class="price-box">Yuklanmoqda...</div>
 
-    <button class="submit-btn" onclick="submitOffline()">Qo'shish</button>
-    <div id="offResult"></div>
+      <div class="section-title"><h2>➕ Oflayn bandlik qo'shish</h2></div>
+      <p style="color:var(--text-muted);font-size:12px;margin:0 0 10px;">Joyida (naqd/karta) to'lagan mijozni shu yerdan kiriting — avtomatik tasdiqlangan hisoblanadi</p>
 
-    <div class="section-title"><h2>🧾 Barcha buyurtmalar</h2></div>
-    <div style="display:flex;gap:8px;margin-bottom:14px;">
-      <button class="filter-btn active" data-filter="all">Hammasi</button>
-      <button class="filter-btn" data-filter="club">🏢 Klub</button>
-      <button class="filter-btn" data-filter="rental">🏠 Ijara</button>
+      <label>Turi</label>
+      <select id="offKind">
+        <option value="club">🏢 Klub</option>
+        <option value="rental">🏠 Ijara</option>
+      </select>
+
+      <label>Konsol</label>
+      <select id="offConsole"></select>
+
+      <label>Sana</label>
+      <input type="date" id="offDate">
+
+      <label>Boshlanish vaqti</label>
+      <select id="offStartHour"></select>
+
+      <label id="offHoursLabel">Necha soat</label>
+      <select id="offHours">
+        <option value="1">1 soat</option>
+        <option value="2">2 soat</option>
+        <option value="3">3 soat</option>
+        <option value="4">4 soat</option>
+      </select>
+
+      <div id="offAddressWrap" style="display:none;">
+        <label>Manzil</label>
+        <input type="text" id="offAddress" placeholder="Manzil">
+      </div>
+
+      <label>Telefon (ixtiyoriy)</label>
+      <input type="tel" id="offPhone" placeholder="+998 90 123 45 67">
+
+      <label>Qabul qilingan summa (ixtiyoriy, bo'sh qoldirsangiz standart narx olinadi)</label>
+      <input type="number" id="offPaidAmount" placeholder="masalan: 35000">
+
+      <button class="submit-btn" onclick="submitOffline()">Qo'shish</button>
+      <div id="offResult"></div>
+
+      <div class="section-title"><h2>🧾 Barcha buyurtmalar</h2></div>
+      <div style="display:flex;gap:8px;margin-bottom:14px;">
+        <button class="filter-btn active" data-filter="all">Hammasi</button>
+        <button class="filter-btn" data-filter="club">🏢 Klub</button>
+        <button class="filter-btn" data-filter="rental">🏠 Ijara</button>
+      </div>
+
+      <div id="list"><div class="empty-state">Yuklanmoqda...</div></div>
     </div>
-
-    <div id="list"><div class="empty-state">Yuklanmoqda...</div></div>
   </div>
 
   <style>
@@ -81,15 +93,9 @@
   <script>
     const tg = window.Telegram && window.Telegram.WebApp;
     if (tg) { tg.ready(); tg.expand(); }
-    function getTelegramId() {
-      let id = tg && tg.initDataUnsafe && tg.initDataUnsafe.user ? tg.initDataUnsafe.user.id : null;
-      try {
-        if (id) sessionStorage.setItem('tgId', id);
-        else id = sessionStorage.getItem('tgId');
-      } catch (e) {}
-      return id;
-    }
-    const telegramId = getTelegramId();
+
+    let adminPassword = '';
+    try { adminPassword = sessionStorage.getItem('adminPassword') || ''; } catch (e) {}
 
     const statusLabels = {
       awaiting_payment: "To'lov kutilmoqda",
@@ -98,15 +104,48 @@
       expired: "Muddati o'tgan"
     };
 
+    async function tryLogin() {
+      const pass = document.getElementById('passwordInput').value;
+      const errEl = document.getElementById('loginError');
+      const res = await fetch('/api/check-access?password=' + encodeURIComponent(pass));
+      const data = res.status !== 403 ? await res.json() : null;
+      if (!data || data.role !== 'admin') {
+        errEl.className = 'result-box error';
+        errEl.innerHTML = "❌ Parol noto'g'ri yoki bu faqat xodim paroli (to'liq panel uchun admin parol kerak)";
+        return;
+      }
+      adminPassword = pass;
+      try { sessionStorage.setItem('adminPassword', pass); } catch (e) {}
+      showMain();
+    }
+
+    function showMain() {
+      document.getElementById('loginScreen').style.display = 'none';
+      document.getElementById('mainScreen').style.display = 'block';
+      loadStats();
+      loadOrders();
+    }
+
+    // Agar oldin kirilgan bo'lsa, qayta parol so'ramaydi
+    if (adminPassword) {
+      fetch('/api/check-access?password=' + encodeURIComponent(adminPassword)).then(async res => {
+        if (res.status === 403) return;
+        const d = await res.json();
+        if (d.role === 'admin') showMain();
+      });
+    }
+
     // ---------- Moliya ----------
     async function loadStats() {
       const box = document.getElementById('statsBox');
-      const res = await fetch('/api/stats?telegramId=' + telegramId);
+      const res = await fetch('/api/stats?password=' + encodeURIComponent(adminPassword));
       if (res.status === 403) { box.textContent = 'Kirish huquqi yo\'q'; return; }
       const s = await res.json();
       box.innerHTML = `
-        <div class="row"><span>Onlayn daromad</span><span>${s.onlineRevenue.toLocaleString()} so'm</span></div>
-        <div class="row"><span>Oflayn daromad</span><span>${s.offlineRevenue.toLocaleString()} so'm</span></div>
+        <div class="row"><span>🏢 Klub daromadi</span><span>${s.clubRevenue.toLocaleString()} so'm</span></div>
+        <div class="row"><span>🏠 Ijara daromadi</span><span>${s.rentalRevenue.toLocaleString()} so'm</span></div>
+        <div class="row" style="margin-top:6px;"><span>💻 Onlayn</span><span>${s.onlineRevenue.toLocaleString()} so'm</span></div>
+        <div class="row"><span>🧾 Oflayn</span><span>${s.offlineRevenue.toLocaleString()} so'm</span></div>
         <div class="row total"><span>Jami daromad</span><span>${s.totalRevenue.toLocaleString()} so'm</span></div>
         <div class="row" style="margin-top:8px;"><span>Klub: ${s.clubConfirmed}/${s.clubBookingsTotal}</span><span>Ijara: ${s.rentalConfirmed}/${s.rentalOrdersTotal}</span></div>
         <div class="row"><span>To'lov kutilmoqda</span><span>${s.awaitingPayment} ta</span></div>
@@ -156,7 +195,7 @@
       const res = await fetch('/api/offline-booking', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ telegramId, kind, date, startHour, hours, consoleId, address, phone, paidAmount })
+        body: JSON.stringify({ password: adminPassword, kind, date, startHour, hours, consoleId, address, phone, paidAmount })
       });
       const data = await res.json();
       if (data.ok) {
@@ -175,11 +214,7 @@
 
     async function loadOrders() {
       const list = document.getElementById('list');
-      if (!telegramId) {
-        list.innerHTML = '<div class="empty-state">Botni Telegram ichidan admin sifatida oching</div>';
-        return;
-      }
-      const res = await fetch('/api/all-orders?telegramId=' + telegramId);
+      const res = await fetch('/api/all-orders?password=' + encodeURIComponent(adminPassword));
       if (res.status === 403) {
         list.innerHTML = '<div class="empty-state">Sizda bu panelga kirish huquqi yo\'q</div>';
         return;
@@ -217,9 +252,6 @@
         render();
       });
     });
-
-    loadStats();
-    loadOrders();
   </script>
 </body>
 </html>

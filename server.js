@@ -2,7 +2,7 @@ const express = require('express');
 const path = require('path');
 const booking = require('./booking');
 
-function createServer(bot, adminChatId, adminTelegramId, paymentCard) {
+function createServer(bot, adminChatId, adminTelegramId, paymentCard, adminPassword, staffPassword) {
   const app = express();
   app.use(express.json());
 
@@ -13,11 +13,25 @@ function createServer(bot, adminChatId, adminTelegramId, paymentCard) {
   app.get('/rental.html', (req, res) => res.sendFile(path.join(__dirname, 'rental.html')));
   app.get('/orders.html', (req, res) => res.sendFile(path.join(__dirname, 'orders.html')));
   app.get('/admin.html', (req, res) => res.sendFile(path.join(__dirname, 'admin.html')));
+  app.get('/offline.html', (req, res) => res.sendFile(path.join(__dirname, 'offline.html')));
   app.get('/style.css', (req, res) => res.sendFile(path.join(__dirname, 'style.css')));
 
-  function isAdmin(telegramId) {
-    return adminTelegramId && String(telegramId) === String(adminTelegramId);
+  // Admin — to'liq huquq (statistika, barcha buyurtmalar, oflayn kiritish)
+  function isAdmin(password) {
+    return adminPassword && password === adminPassword;
   }
+  // Xodim — faqat oflayn bandlik kiritish huquqi (statistika/buyurtmalar ro'yxatini ko'ra olmaydi)
+  function isStaff(password) {
+    return (staffPassword && password === staffPassword) || isAdmin(password);
+  }
+
+  // Parolni tekshirish (login ekranlari uchun)
+  app.get('/api/check-access', (req, res) => {
+    const { password } = req.query;
+    if (isAdmin(password)) return res.json({ ok: true, role: 'admin' });
+    if (isStaff(password)) return res.json({ ok: true, role: 'staff' });
+    res.status(403).json({ ok: false });
+  });
 
   // Klubga band qilish (mijoz o'zi konsol tanlaydi)
   app.post('/api/club-booking', (req, res) => {
@@ -45,10 +59,10 @@ function createServer(bot, adminChatId, adminTelegramId, paymentCard) {
     res.json(result);
   });
 
-  // Admin uchun: oflaynda (joyida) qilingan bandlikni tizimga kiritish
+  // Admin/xodim uchun: oflaynda (joyida) qilingan bandlikni tizimga kiritish
   app.post('/api/offline-booking', (req, res) => {
-    const { telegramId, kind, date, startHour, hours, consoleId, phone, address, paidAmount } = req.body;
-    if (!isAdmin(telegramId)) return res.status(403).json({ ok: false, error: 'forbidden' });
+    const { password, kind, date, startHour, hours, consoleId, phone, address, paidAmount } = req.body;
+    if (!isStaff(password)) return res.status(403).json({ ok: false, error: 'forbidden' });
     if (!kind || !date || startHour == null || !hours || !consoleId) {
       return res.status(400).json({ ok: false, error: 'missing_fields' });
     }
@@ -88,17 +102,17 @@ function createServer(bot, adminChatId, adminTelegramId, paymentCard) {
     res.json(booking.getRentalConsoleAvailability(date));
   });
 
-  // Admin uchun: barcha buyurtmalar (faqat admin telegramId bilan)
+  // Admin/xodim uchun: barcha buyurtmalar (parol bilan)
   app.get('/api/all-orders', (req, res) => {
-    const { telegramId } = req.query;
-    if (!isAdmin(telegramId)) return res.status(403).json({ ok: false, error: 'forbidden' });
+    const { password } = req.query;
+    if (!isAdmin(password)) return res.status(403).json({ ok: false, error: 'forbidden' });
     res.json(booking.getAllOrders());
   });
 
-  // Admin uchun: moliyaviy statistika
+  // Admin/xodim uchun: moliyaviy statistika (parol bilan)
   app.get('/api/stats', (req, res) => {
-    const { telegramId } = req.query;
-    if (!isAdmin(telegramId)) return res.status(403).json({ ok: false, error: 'forbidden' });
+    const { password } = req.query;
+    if (!isAdmin(password)) return res.status(403).json({ ok: false, error: 'forbidden' });
     res.json(booking.getStats());
   });
 

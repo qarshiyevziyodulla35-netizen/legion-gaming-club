@@ -36,12 +36,20 @@ function createBot(token, webAppUrl, adminChatId, adminTelegramId) {
     );
   });
 
-  // Faqat admin uchun: barcha buyurtmalarni ko'rsatuvchi Mini App panelni ochish
+  // Admin panelni ochish — panelning o'zi parol so'raydi, shuning uchun bu buyruq ochiq
+  // (xodimlar ham shu buyruq orqali kirib, umumiy parolni kiritadi)
   bot.command('admin', (ctx) => {
-    if (!isAdminChat(ctx, adminChatId, adminTelegramId)) return;
     ctx.reply(
       "Admin panel:",
-      Markup.keyboard([[Markup.button.webApp('📋 Barcha buyurtmalar', webAppUrl.replace(/\/?$/, '/admin.html'))]]).resize()
+      Markup.keyboard([[Markup.button.webApp('📋 Admin panel', webAppUrl.replace(/\/?$/, '/admin.html'))]]).resize()
+    );
+  });
+
+  // Xodim uchun: faqat oflayn bandlik kiritish sahifasi (statistika/buyurtmalar ro'yxatisiz)
+  bot.command('xodim', (ctx) => {
+    ctx.reply(
+      "Oflayn bandlik qo'shish:",
+      Markup.keyboard([[Markup.button.webApp('➕ Oflayn bandlik', webAppUrl.replace(/\/?$/, '/offline.html'))]]).resize()
     );
   });
 

@@ -1,18 +1,14 @@
 # PlayStation Klub — Telegram Bot
 
 ## Nima qilingan
-- Klubga joy band qilish — mijoz **o'zi konsolni tanlaydi** (1-4), tanlangan konsolning band soatlari darhol ko'rinadi
-- Uyga PlayStation ijaraga buyurtma — mijoz 2 ta ijara konsolidan birini tanlaydi, sanadagi band/bo'shligi ko'rinadi
-- Telegram Mini App interfeys — dashboard uslubidagi dizayn
-- "Mening buyurtmalarim" — telefon raqam bo'yicha qidiriladi (Telegram ID ba'zi mijozlarda ishlamasligi mumkinligi uchun ishonchli yechim)
-- **Admin panel** (`/admin.html`):
-  - Moliyaviy hisobot (onlayn/oflayn/jami daromad)
-  - **Oflayn (joyida) bandlikni tizimga kiritish** — mijoz botsiz kelib to'lagan bo'lsa, shu yerdan kiritiladi, avtomatik "tasdiqlangan" deb belgilanadi va statistikaga qo'shiladi
-  - Barcha buyurtmalar ro'yxati (onlayn/oflayn belgisi bilan)
-- Admin guruhga/chatga avtomatik xabar + "Tasdiqlash/Bekor qilish" tugmalari
-- To'lov: mijoz chek screenshotini botga yuboradi, admin tugma bosib tasdiqlaydi
+- Klubga joy band qilish — mijoz o'zi konsolni tanlaydi, band vaqtlar "(band)" deb belgilanadi
+- Uyga PlayStation ijaraga buyurtma — mijoz 2 ta ijara konsolidan birini tanlaydi
+- "Mening buyurtmalarim" — telefon raqam bo'yicha qidiriladi
+- **Admin panel** (`/admin`, parol bilan): moliyaviy hisobot, barcha buyurtmalar, oflayn bandlik kiritish
+- **Xodim sahifasi** (`/xodim`, alohida parol bilan): FAQAT oflayn bandlik kiritadi,
+  statistika/buyurtmalar ro'yxatini ko'ra olmaydi
+- Admin guruhga avtomatik xabar + "Tasdiqlash/Bekor qilish" tugmalari
 - 20 daqiqa ichida to'lov screenshoti kelmasa, band avtomatik bekor bo'ladi
-- `/stats` — statistika (onlayn/oflayn ajratilgan holda), faqat admin uchun
 
 ## O'rnatish
 
@@ -21,31 +17,42 @@
 3. `.env.example` faylini `.env` deb nusxa oling va to'ldiring
 4. `node index.js`
 
-## ADMIN_CHAT_ID va ADMIN_TELEGRAM_ID farqi
+## ‼️ MUHIM: Ma'lumotlarni yo'qotmaslik (DATA_DIR)
 
-- **ADMIN_CHAT_ID** — yangi buyurtma xabarlari shu yerga boradi (guruh bo'lishi mumkin)
-- **ADMIN_TELEGRAM_ID** — sizning shaxsiy Telegram ID'ingiz — `/admin`, `/stats` va admin panelga
-  kirish huquqi shu orqali tekshiriladi
+Railway kabi platformalarda, agar ma'lumotlar oddiy papkada saqlansa, **har safar yangi kod
+deploy qilganingizda barcha mijoz ma'lumotlari o'chib ketadi** (konteyner qayta yaratiladi).
 
-Ikkalasini ham botning shaxsiy/guruh chatida `/groupid` deb yozib bilib olasiz.
+Buni oldini olish uchun:
+1. Railway loyihangizga **Volume** (doimiy xotira) qo'shing — Railway paneli → loyihangiz →
+   "Volumes" → "New Volume" → masalan `/data` yo'lga ulang
+2. `.env`ga qo'shing: `DATA_DIR=/data`
+3. Shundan keyin `data.json` shu doimiy xotirada saqlanadi, deploy qilinganda o'chmaydi
 
-## Oflayn bandlikni kiritish
+**Agar bu bosqichni o'tkazib yuborsangiz**, botni yangilashda barcha buyurtma tarixi yo'qoladi.
 
-Admin panelda ("📋 Barcha buyurtmalar" — botda `/admin` deb yozing) "➕ Oflayn bandlik qo'shish"
-formasi bor. Mijoz klubga kelib yoki telefon orqali botsiz band qilgan bo'lsa:
-1. Turi (klub/ijara), konsol, sana, vaqt, muddatni tanlang
-2. Agar standart narxdan farqli summa olingan bo'lsa, "Qabul qilingan summa" ga kiriting
-3. "Qo'shish" — bandlik avtomatik "tasdiqlangan" bo'lib, statistikaga qo'shiladi
+## Parollar
 
-Bu orqali onlayn va oflayn daromadni birga, bitta joydan (moliya bo'limida) kuzatib borish mumkin.
+- **ADMIN_PANEL_PASSWORD** — sizning shaxsiy parolingiz, to'liq huquq: statistika, barcha
+  buyurtmalar, oflayn kiritish. Faqat o'zingizda saqlang.
+- **STAFF_PASSWORD** — ishchiga beriladigan parol. Bu bilan faqat oflayn bandlik kiritish
+  mumkin (`/xodim` sahifasi), moliyaviy ma'lumotlar va boshqa mijozlar buyurtmalari ko'rinmaydi.
+
+**Ishchi qanday foydalanadi:** botga `/xodim` deb yozadi → "➕ Oflayn bandlik" tugmasi chiqadi →
+parolni kiritadi → klub/ijara, konsol, sana/vaqt tanlab, "Qo'shish" bosadi. Bu bandlik avtomatik
+"tasdiqlangan" bo'lib hisobga qo'shiladi.
+
+## ADMIN_CHAT_ID (guruh)
+
+Yangi buyurtma xabarlari (tasdiqlash/bekor qilish tugmalari bilan) shu chatga boradi.
+Guruh yarating, botni admin qilib qo'shing, guruhda `/groupid` deb yozib ID'sini oling,
+`.env`dagi `ADMIN_CHAT_ID`ga qo'ying.
 
 ## Karta raqami
 `.env` fayliga `PAYMENT_CARD_NUMBER` va `PAYMENT_CARD_OWNER` qo'shing.
 
-## Muhim eslatmalar
-- Telegram Mini App **faqat https bilan ishlaydi**
-- Ma'lumotlar hozircha oddiy `data.json` faylida saqlanadi
-- Jihoz shikastlanishi/qaytmasligi bot orqali nazorat qilinmaydi
+## Moliyaviy hisobot
+Admin panelda: klub daromadi, ijara daromadi, onlayn/oflayn ajratilgan holda, va jami daromad —
+bittа joyda. `/stats` buyrug'i orqali ham bot ichida qisqacha ko'rish mumkin (faqat admin parol bilan).
 
 ## Keyingi qadamlar (hozircha qilinmagan)
 - Payme/Click avtomatik to'lov integratsiyasi (merchant hisob kerak)

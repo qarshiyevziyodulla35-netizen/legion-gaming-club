@@ -1,0 +1,148 @@
+<!DOCTYPE html>
+<html lang="uz">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Oflayn bandlik</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <div class="container">
+
+    <div id="loginScreen">
+      <h1 class="display" style="font-size:22px;margin:0 0 4px;">🔒 Oflayn bandlik</h1>
+      <p style="color:var(--text-muted);font-size:13px;margin:0 0 18px;">Kirish uchun parolni kiriting</p>
+      <label>Parol</label>
+      <input type="password" id="passwordInput" placeholder="Parol">
+      <button class="submit-btn" onclick="tryLogin()">Kirish</button>
+      <div id="loginError"></div>
+    </div>
+
+    <div id="mainScreen" style="display:none;">
+      <h1 class="display" style="font-size:22px;margin:0 0 4px;">➕ Oflayn bandlik qo'shish</h1>
+      <p style="color:var(--text-muted);font-size:12px;margin:0 0 18px;">Joyida (naqd/karta) to'lagan mijozni shu yerdan kiriting</p>
+
+      <label>Turi</label>
+      <select id="offKind">
+        <option value="club">🏢 Klub</option>
+        <option value="rental">🏠 Ijara</option>
+      </select>
+
+      <label>Konsol</label>
+      <select id="offConsole"></select>
+
+      <label>Sana</label>
+      <input type="date" id="offDate">
+
+      <label>Boshlanish vaqti</label>
+      <select id="offStartHour"></select>
+
+      <label id="offHoursLabel">Necha soat</label>
+      <select id="offHours">
+        <option value="1">1 soat</option>
+        <option value="2">2 soat</option>
+        <option value="3">3 soat</option>
+        <option value="4">4 soat</option>
+      </select>
+
+      <div id="offAddressWrap" style="display:none;">
+        <label>Manzil</label>
+        <input type="text" id="offAddress" placeholder="Manzil">
+      </div>
+
+      <label>Telefon (ixtiyoriy)</label>
+      <input type="tel" id="offPhone" placeholder="+998 90 123 45 67">
+
+      <label>Qabul qilingan summa (ixtiyoriy, bo'sh qoldirsangiz standart narx olinadi)</label>
+      <input type="number" id="offPaidAmount" placeholder="masalan: 35000">
+
+      <button class="submit-btn" onclick="submitOffline()">Qo'shish</button>
+      <div id="offResult"></div>
+    </div>
+  </div>
+
+  <script>
+    let myPassword = '';
+    try { myPassword = sessionStorage.getItem('offlinePassword') || ''; } catch (e) {}
+
+    async function tryLogin() {
+      const pass = document.getElementById('passwordInput').value;
+      const errEl = document.getElementById('loginError');
+      const res = await fetch('/api/check-access?password=' + encodeURIComponent(pass));
+      if (res.status === 403) {
+        errEl.className = 'result-box error';
+        errEl.innerHTML = "❌ Parol noto'g'ri";
+        return;
+      }
+      myPassword = pass;
+      try { sessionStorage.setItem('offlinePassword', pass); } catch (e) {}
+      showMain();
+    }
+
+    function showMain() {
+      document.getElementById('loginScreen').style.display = 'none';
+      document.getElementById('mainScreen').style.display = 'block';
+    }
+
+    if (myPassword) {
+      fetch('/api/check-access?password=' + encodeURIComponent(myPassword)).then(res => {
+        if (res.status !== 403) showMain();
+      });
+    }
+
+    const offStartHourSel = document.getElementById('offStartHour');
+    for (let h = 9; h <= 22; h++) {
+      const opt = document.createElement('option');
+      opt.value = h; opt.textContent = h + ':00';
+      offStartHourSel.appendChild(opt);
+    }
+    document.getElementById('offDate').valueAsDate = new Date();
+
+    function updateOfflineFormForKind() {
+      const kind = document.getElementById('offKind').value;
+      const consoleSel = document.getElementById('offConsole');
+      consoleSel.innerHTML = '';
+      const count = kind === 'club' ? 4 : 2;
+      for (let i = 1; i <= count; i++) {
+        const opt = document.createElement('option');
+        opt.value = i; opt.textContent = 'Konsol ' + i;
+        consoleSel.appendChild(opt);
+      }
+      document.getElementById('offAddressWrap').style.display = kind === 'rental' ? 'block' : 'none';
+      document.getElementById('offHoursLabel').textContent = kind === 'rental' ? 'Necha kun (x24 soat)' : 'Necha soat';
+      const hoursSel = document.getElementById('offHours');
+      hoursSel.innerHTML = kind === 'rental'
+        ? '<option value="24">1 kun</option><option value="48">2 kun</option><option value="72">3 kun</option>'
+        : '<option value="1">1 soat</option><option value="2">2 soat</option><option value="3">3 soat</option><option value="4">4 soat</option>';
+    }
+    document.getElementById('offKind').addEventListener('change', updateOfflineFormForKind);
+    updateOfflineFormForKind();
+
+    async function submitOffline() {
+      const kind = document.getElementById('offKind').value;
+      const consoleId = document.getElementById('offConsole').value;
+      const date = document.getElementById('offDate').value;
+      const startHour = document.getElementById('offStartHour').value;
+      const hours = document.getElementById('offHours').value;
+      const address = document.getElementById('offAddress').value;
+      const phone = document.getElementById('offPhone').value;
+      const paidAmount = document.getElementById('offPaidAmount').value;
+      const resultDiv = document.getElementById('offResult');
+
+      const res = await fetch('/api/offline-booking', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ password: myPassword, kind, date, startHour, hours, consoleId, address, phone, paidAmount })
+      });
+      const data = await res.json();
+      if (data.ok) {
+        resultDiv.className = 'result-box';
+        resultDiv.innerHTML = `✅ Qo'shildi! #${data.booking ? data.booking.id : data.order.id}`;
+      } else {
+        resultDiv.className = 'result-box error';
+        resultDiv.innerHTML = data.reason === 'console_busy' ? '❌ Bu konsol shu vaqtda band' : '❌ Xatolik: ' + (data.error || data.reason || '');
+      }
+    }
+  </script>
+</body>
+</html>
