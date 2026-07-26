@@ -9,10 +9,14 @@
 <body>
   <div class="container">
     <a href="index.html" onclick="return navHash(this)" class="back-link">← Orqaga</a>
-    <h1 class="display" style="font-size:22px;margin:0 0 16px;">🧾 Mening buyurtmalarim</h1>
+    <h1 class="display" style="font-size:22px;margin:0 0 4px;">🧾 Mening buyurtmalarim</h1>
+    <p style="color:var(--text-muted);font-size:13px;margin:0 0 16px;">Band qilishda ko'rsatgan telefon raqamingizni kiriting</p>
 
-    <div id="list"><div class="empty-state">Yuklanmoqda...</div></div>
-    <p id="debugId" style="font-size:11px;color:var(--text-muted);text-align:center;margin-top:10px;"></p>
+    <label>Telefon raqam</label>
+    <input type="tel" id="phoneInput" placeholder="+998 90 123 45 67">
+    <button class="submit-btn" onclick="searchByPhone()">Qidirish</button>
+
+    <div id="list" style="margin-top:20px;"></div>
 
     <div class="bottom-nav">
       <a href="index.html" onclick="return navHash(this)"><span class="icon">🏠</span>Bosh sahifa</a>
@@ -36,19 +40,6 @@
       window.location.href = el.getAttribute('href') + window.location.hash;
       return false;
     }
-    // Telegram foydalanuvchi ID'sini olish — birinchi marta topilganda saqlab qo'yamiz,
-    // keyingi sahifalarda (agar hash orqali kelmasa ham) sessionStorage'dan o'qiymiz
-    function getTelegramId() {
-      let id = tg && tg.initDataUnsafe && tg.initDataUnsafe.user ? tg.initDataUnsafe.user.id : null;
-      try {
-        if (id) sessionStorage.setItem('tgId', id);
-        else id = sessionStorage.getItem('tgId');
-      } catch (e) {}
-      return id;
-    }
-    const telegramId = getTelegramId();
-    const debugEl = document.getElementById('debugId');
-    if (debugEl) debugEl.textContent = telegramId ? ('ID: ' + telegramId) : 'ID topilmadi';
 
     const statusLabels = {
       awaiting_payment: "To'lov kutilmoqda",
@@ -57,22 +48,12 @@
       expired: "Muddati o'tgan"
     };
 
-    async function loadOrders() {
+    function renderItems(items) {
       const list = document.getElementById('list');
-      if (!telegramId) {
-        list.innerHTML = '<div class="empty-state">Buyurtmalaringizni ko\'rish uchun botni Telegram ichidan oching</div>';
-        return;
-      }
-      const res = await fetch('/api/my-orders?telegramId=' + telegramId);
-      const data = await res.json();
-      const items = [...data.club.map(x => ({...x, kind: 'club'})), ...data.rental.map(x => ({...x, kind: 'rental'}))]
-        .sort((a, b) => b.createdAt - a.createdAt);
-
       if (items.length === 0) {
-        list.innerHTML = '<div class="empty-state">Hali buyurtmangiz yo\'q</div>';
+        list.innerHTML = '<div class="empty-state">Bu raqam bo\'yicha buyurtma topilmadi</div>';
         return;
       }
-
       list.innerHTML = items.map(o => `
         <div class="order-card">
           <div class="top-row">
@@ -84,7 +65,34 @@
         </div>
       `).join('');
     }
-    loadOrders();
+
+    async function searchByPhone() {
+      const phone = document.getElementById('phoneInput').value;
+      const list = document.getElementById('list');
+      if (!phone) {
+        alert("Iltimos, telefon raqamni kiriting");
+        return;
+      }
+      list.innerHTML = '<div class="empty-state">Qidirilmoqda...</div>';
+      const res = await fetch('/api/my-orders-by-phone?phone=' + encodeURIComponent(phone));
+      const data = await res.json();
+      const items = [...data.club.map(x => ({...x, kind: 'club'})), ...data.rental.map(x => ({...x, kind: 'rental'}))]
+        .sort((a, b) => b.createdAt - a.createdAt);
+      renderItems(items);
+    }
+
+    // Sahifa ochilganda, agar oldin telefon raqam kiritilgan bo'lsa, avtomatik ko'rsatamiz
+    try {
+      const savedPhone = sessionStorage.getItem('myPhone');
+      if (savedPhone) {
+        document.getElementById('phoneInput').value = savedPhone;
+        searchByPhone();
+      }
+    } catch (e) {}
+
+    document.getElementById('phoneInput').addEventListener('change', function() {
+      try { sessionStorage.setItem('myPhone', this.value); } catch (e) {}
+    });
   </script>
 </body>
 </html>

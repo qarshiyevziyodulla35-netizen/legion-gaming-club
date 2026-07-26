@@ -121,6 +121,7 @@
       const days = Number(document.getElementById('days').value);
       const hours = days * 24;
       const phone = document.getElementById('phone').value;
+      try { sessionStorage.setItem('myPhone', phone); } catch (e) {}
       // Telegram foydalanuvchi ID'sini olish — birinchi marta topilganda saqlab qo'yamiz,
     // keyingi sahifalarda (agar hash orqali kelmasa ham) sessionStorage'dan o'qiymiz
     function getTelegramId() {

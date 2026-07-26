@@ -246,12 +246,23 @@ function getLiveConsoleStatus() {
   return { club, rental };
 }
 
+// mijozning barcha buyurtmalari (telefon raqam bo'yicha — Telegram ID ishlamagan holatlar uchun)
+function getOrdersByPhone(phone) {
+  const data = load();
+  const normalize = p => String(p).replace(/[^0-9]/g, '');
+  const target = normalize(phone);
+  return {
+    club: data.clubBookings.filter(b => normalize(b.phone) === target),
+    rental: data.rentalOrders.filter(o => normalize(o.phone) === target)
+  };
+}
+
 module.exports = {
   CLUB_HOURLY_PRICE, RENTAL_DAILY_PRICE,
   createClubBooking, createRentalOrder,
   confirmPayment, cancel, expireStalePayments,
   findFreeClubConsole, findFreeRentalConsole,
-  getOrdersByTelegramId, getTodayAvailability, getStats,
+  getOrdersByTelegramId, getOrdersByPhone, getTodayAvailability, getStats,
   getClubSchedule, getRentalSchedule, getAllOrders,
   getLiveConsoleStatus
 };

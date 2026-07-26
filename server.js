@@ -48,6 +48,13 @@ function createServer(bot, adminChatId, adminTelegramId, paymentCard) {
     res.json(booking.getOrdersByTelegramId(telegramId));
   });
 
+  // Telefon raqam bo'yicha qidirish (Telegram ID ishlamagan holatlar uchun ishonchli yechim)
+  app.get('/api/my-orders-by-phone', (req, res) => {
+    const { phone } = req.query;
+    if (!phone) return res.status(400).json({ ok: false, error: 'missing_phone' });
+    res.json(booking.getOrdersByPhone(phone));
+  });
+
   // Bugungi bo'sh konsollar (dashboard uchun)
   app.get('/api/availability', (req, res) => {
     res.json(booking.getTodayAvailability());
