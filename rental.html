@@ -121,7 +121,17 @@
       const days = Number(document.getElementById('days').value);
       const hours = days * 24;
       const phone = document.getElementById('phone').value;
-      const telegramId = tg && tg.initDataUnsafe && tg.initDataUnsafe.user ? tg.initDataUnsafe.user.id : null;
+      // Telegram foydalanuvchi ID'sini olish — birinchi marta topilganda saqlab qo'yamiz,
+    // keyingi sahifalarda (agar hash orqali kelmasa ham) sessionStorage'dan o'qiymiz
+    function getTelegramId() {
+      let id = tg && tg.initDataUnsafe && tg.initDataUnsafe.user ? tg.initDataUnsafe.user.id : null;
+      try {
+        if (id) sessionStorage.setItem('tgId', id);
+        else id = sessionStorage.getItem('tgId');
+      } catch (e) {}
+      return id;
+    }
+    const telegramId = getTelegramId();
 
       if (!address || !date || !phone) {
         alert("Iltimos, barcha maydonlarni to'ldiring");

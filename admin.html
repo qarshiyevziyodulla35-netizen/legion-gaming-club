@@ -38,7 +38,17 @@
   <script>
     const tg = window.Telegram && window.Telegram.WebApp;
     if (tg) { tg.ready(); tg.expand(); }
-    const telegramId = tg && tg.initDataUnsafe && tg.initDataUnsafe.user ? tg.initDataUnsafe.user.id : null;
+    // Telegram foydalanuvchi ID'sini olish — birinchi marta topilganda saqlab qo'yamiz,
+    // keyingi sahifalarda (agar hash orqali kelmasa ham) sessionStorage'dan o'qiymiz
+    function getTelegramId() {
+      let id = tg && tg.initDataUnsafe && tg.initDataUnsafe.user ? tg.initDataUnsafe.user.id : null;
+      try {
+        if (id) sessionStorage.setItem('tgId', id);
+        else id = sessionStorage.getItem('tgId');
+      } catch (e) {}
+      return id;
+    }
+    const telegramId = getTelegramId();
 
     const statusLabels = {
       awaiting_payment: "To'lov kutilmoqda",

@@ -59,6 +59,12 @@
     const tg = window.Telegram && window.Telegram.WebApp;
     if (tg) { tg.ready(); tg.expand(); tg.BackButton.hide(); }
 
+    // Birinchi kirgan sahifada (bosh sahifa) Telegram ID'ni sessionStorage'ga saqlab qo'yamiz
+    try {
+      const uid = tg && tg.initDataUnsafe && tg.initDataUnsafe.user ? tg.initDataUnsafe.user.id : null;
+      if (uid) sessionStorage.setItem('tgId', uid);
+    } catch (e) {}
+
     // Sahifalar orasida o'tganda Telegram foydalanuvchi ma'lumotini (initData) yo'qotmaslik uchun
     function navHash(el) {
       window.location.href = el.getAttribute('href') + window.location.hash;
