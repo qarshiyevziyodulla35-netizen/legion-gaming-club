@@ -15,33 +15,52 @@ function createServer(bot, adminChatId, adminTelegramId, paymentCard) {
   app.get('/admin.html', (req, res) => res.sendFile(path.join(__dirname, 'admin.html')));
   app.get('/style.css', (req, res) => res.sendFile(path.join(__dirname, 'style.css')));
 
-  // Klubga band qilish
+  function isAdmin(telegramId) {
+    return adminTelegramId && String(telegramId) === String(adminTelegramId);
+  }
+
+  // Klubga band qilish (mijoz o'zi konsol tanlaydi)
   app.post('/api/club-booking', (req, res) => {
-    const { date, startHour, hours, phone, telegramId } = req.body;
-    if (!date || startHour == null || !hours || !phone) {
+    const { date, startHour, hours, phone, telegramId, consoleId } = req.body;
+    if (!date || startHour == null || !hours || !phone || !consoleId) {
       return res.status(400).json({ ok: false, error: 'missing_fields' });
     }
-    const result = booking.createClubBooking({ date, startHour: Number(startHour), hours: Number(hours), phone, telegramId });
+    const result = booking.createClubBooking({ date, startHour: Number(startHour), hours: Number(hours), phone, telegramId, consoleId });
     if (!result.ok) return res.status(409).json(result);
 
     notifyAdminNewBooking(bot, adminChatId, 'club', result.booking);
     res.json(result);
   });
 
-  // Uyga ijara buyurtmasi
+  // Uyga ijara buyurtmasi (mijoz o'zi konsol tanlaydi)
   app.post('/api/rental-order', (req, res) => {
-    const { date, startHour, hours, address, phone, telegramId } = req.body;
-    if (!date || startHour == null || !hours || !address || !phone) {
+    const { date, startHour, hours, address, phone, telegramId, consoleId } = req.body;
+    if (!date || startHour == null || !hours || !address || !phone || !consoleId) {
       return res.status(400).json({ ok: false, error: 'missing_fields' });
     }
-    const result = booking.createRentalOrder({ date, startHour: Number(startHour), hours: Number(hours), address, phone, telegramId });
+    const result = booking.createRentalOrder({ date, startHour: Number(startHour), hours: Number(hours), address, phone, telegramId, consoleId });
     if (!result.ok) return res.status(409).json(result);
 
     notifyAdminNewBooking(bot, adminChatId, 'rental', result.order);
     res.json(result);
   });
 
-  // Mijozning o'z buyurtmalari tarixi
+  // Admin uchun: oflaynda (joyida) qilingan bandlikni tizimga kiritish
+  app.post('/api/offline-booking', (req, res) => {
+    const { telegramId, kind, date, startHour, hours, consoleId, phone, address, paidAmount } = req.body;
+    if (!isAdmin(telegramId)) return res.status(403).json({ ok: false, error: 'forbidden' });
+    if (!kind || !date || startHour == null || !hours || !consoleId) {
+      return res.status(400).json({ ok: false, error: 'missing_fields' });
+    }
+    const params = { date, startHour: Number(startHour), hours: Number(hours), consoleId, phone, paidAmount };
+    const result = kind === 'club'
+      ? booking.createOfflineClubBooking(params)
+      : booking.createOfflineRentalOrder({ ...params, address });
+    if (!result.ok) return res.status(409).json(result);
+    res.json(result);
+  });
+
+  // Mijozning o'z buyurtmalari tarixi (Telegram ID bo'yicha)
   app.get('/api/my-orders', (req, res) => {
     const { telegramId } = req.query;
     if (!telegramId) return res.status(400).json({ ok: false, error: 'missing_telegramId' });
@@ -55,27 +74,32 @@ function createServer(bot, adminChatId, adminTelegramId, paymentCard) {
     res.json(booking.getOrdersByPhone(phone));
   });
 
-  // Bugungi bo'sh konsollar (dashboard uchun)
-  app.get('/api/availability', (req, res) => {
-    res.json(booking.getTodayAvailability());
+  // Klub: tanlangan sanada har bir konsolning band soatlari
+  app.get('/api/club-console-hours', (req, res) => {
+    const { date } = req.query;
+    if (!date) return res.status(400).json({ ok: false, error: 'missing_date' });
+    res.json(booking.getClubConsoleHours(date));
   });
 
-  // Tanlangan sana uchun bandlik jadvali (klub: soatlik, ijara: kunlik)
-  app.get('/api/schedule', (req, res) => {
-    const { kind, date } = req.query;
-    if (!kind || !date) return res.status(400).json({ ok: false, error: 'missing_fields' });
-    if (kind === 'club') return res.json(booking.getClubSchedule(date));
-    if (kind === 'rental') return res.json(booking.getRentalSchedule(date));
-    res.status(400).json({ ok: false, error: 'bad_kind' });
+  // Ijara: tanlangan sanada har bir konsolning band/bo'shligi
+  app.get('/api/rental-console-availability', (req, res) => {
+    const { date } = req.query;
+    if (!date) return res.status(400).json({ ok: false, error: 'missing_date' });
+    res.json(booking.getRentalConsoleAvailability(date));
   });
 
   // Admin uchun: barcha buyurtmalar (faqat admin telegramId bilan)
   app.get('/api/all-orders', (req, res) => {
     const { telegramId } = req.query;
-    if (!adminTelegramId || String(telegramId) !== String(adminTelegramId)) {
-      return res.status(403).json({ ok: false, error: 'forbidden' });
-    }
+    if (!isAdmin(telegramId)) return res.status(403).json({ ok: false, error: 'forbidden' });
     res.json(booking.getAllOrders());
+  });
+
+  // Admin uchun: moliyaviy statistika
+  app.get('/api/stats', (req, res) => {
+    const { telegramId } = req.query;
+    if (!isAdmin(telegramId)) return res.status(403).json({ ok: false, error: 'forbidden' });
+    res.json(booking.getStats());
   });
 
   // Narxlarni frontendga berish
@@ -84,11 +108,6 @@ function createServer(bot, adminChatId, adminTelegramId, paymentCard) {
       clubHourly: booking.CLUB_HOURLY_PRICE,
       rentalDaily: booking.RENTAL_DAILY_PRICE
     });
-  });
-
-  // Har bir konsolning hozirgi jonli holati (bosh sahifa uchun)
-  app.get('/api/live-status', (req, res) => {
-    res.json(booking.getLiveConsoleStatus());
   });
 
   // To'lov uchun karta ma'lumotlari (frontendga)

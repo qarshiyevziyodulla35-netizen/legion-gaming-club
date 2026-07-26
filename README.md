@@ -1,29 +1,51 @@
 # PlayStation Klub — Telegram Bot
 
 ## Nima qilingan
-- Klubga joy band qilish (4 konsol, 40 000 so'm/soat, 50% oldindan to'lov)
-- Uyga PlayStation ijaraga buyurtma (2 konsol, 300 000 so'm/24 soat, 100% oldindan to'lov = garov)
-- Telegram Mini App interfeys (public/ papkasi)
+- Klubga joy band qilish — mijoz **o'zi konsolni tanlaydi** (1-4), tanlangan konsolning band soatlari darhol ko'rinadi
+- Uyga PlayStation ijaraga buyurtma — mijoz 2 ta ijara konsolidan birini tanlaydi, sanadagi band/bo'shligi ko'rinadi
+- Telegram Mini App interfeys — dashboard uslubidagi dizayn
+- "Mening buyurtmalarim" — telefon raqam bo'yicha qidiriladi (Telegram ID ba'zi mijozlarda ishlamasligi mumkinligi uchun ishonchli yechim)
+- **Admin panel** (`/admin.html`):
+  - Moliyaviy hisobot (onlayn/oflayn/jami daromad)
+  - **Oflayn (joyida) bandlikni tizimga kiritish** — mijoz botsiz kelib to'lagan bo'lsa, shu yerdan kiritiladi, avtomatik "tasdiqlangan" deb belgilanadi va statistikaga qo'shiladi
+  - Barcha buyurtmalar ro'yxati (onlayn/oflayn belgisi bilan)
 - Admin guruhga/chatga avtomatik xabar + "Tasdiqlash/Bekor qilish" tugmalari
 - To'lov: mijoz chek screenshotini botga yuboradi, admin tugma bosib tasdiqlaydi
 - 20 daqiqa ichida to'lov screenshoti kelmasa, band avtomatik bekor bo'ladi
+- `/stats` — statistika (onlayn/oflayn ajratilgan holda), faqat admin uchun
 
-## O'rnatish (server kerak, masalan VPS yoki Railway/Render)
+## O'rnatish
 
-1. Bu papkani serverga yuklang
-2. `npm install` — kutubxonalarni o'rnatish
-3. `.env.example` faylini `.env` deb nusxa oling va to'ldiring:
-   - `BOT_TOKEN` — @BotFather orqali yangi bot yarating, tokenni oling
-   - `WEB_APP_URL` — sizning domeningiz (https bo'lishi SHART, masalan Railway/Render avtomatik beradi)
-   - `ADMIN_CHAT_ID` — @userinfobot ga yozib, o'z ID raqamingizni oling
-4. `node index.js` — ishga tushirish
+1. Bu papkani serverga yuklang (barcha fayllar bitta darajada, papkasiz)
+2. `npm install`
+3. `.env.example` faylini `.env` deb nusxa oling va to'ldiring
+4. `node index.js`
+
+## ADMIN_CHAT_ID va ADMIN_TELEGRAM_ID farqi
+
+- **ADMIN_CHAT_ID** — yangi buyurtma xabarlari shu yerga boradi (guruh bo'lishi mumkin)
+- **ADMIN_TELEGRAM_ID** — sizning shaxsiy Telegram ID'ingiz — `/admin`, `/stats` va admin panelga
+  kirish huquqi shu orqali tekshiriladi
+
+Ikkalasini ham botning shaxsiy/guruh chatida `/groupid` deb yozib bilib olasiz.
+
+## Oflayn bandlikni kiritish
+
+Admin panelda ("📋 Barcha buyurtmalar" — botda `/admin` deb yozing) "➕ Oflayn bandlik qo'shish"
+formasi bor. Mijoz klubga kelib yoki telefon orqali botsiz band qilgan bo'lsa:
+1. Turi (klub/ijara), konsol, sana, vaqt, muddatni tanlang
+2. Agar standart narxdan farqli summa olingan bo'lsa, "Qabul qilingan summa" ga kiriting
+3. "Qo'shish" — bandlik avtomatik "tasdiqlangan" bo'lib, statistikaga qo'shiladi
+
+Bu orqali onlayn va oflayn daromadni birga, bitta joydan (moliya bo'limida) kuzatib borish mumkin.
+
+## Karta raqami
+`.env` fayliga `PAYMENT_CARD_NUMBER` va `PAYMENT_CARD_OWNER` qo'shing.
 
 ## Muhim eslatmalar
-- Telegram Mini App **faqat https bilan ishlaydi** — shuning uchun bepul hosting (Railway, Render, yoki VPS + domen) kerak bo'ladi, localhost'da faqat test qilib ko'rish mumkin (Telegram tashqarisida, brauzerda)
-- Ma'lumotlar hozircha oddiy `data.json` faylida saqlanadi — bu kichik boshlanish uchun yetarli, lekin buyurtmalar ko'payib ketsa, haqiqiy bazaga (Postgres) o'tish kerak bo'ladi
-- Jihoz shikastlanishi/qaytmasligi bot orqali nazorat qilinmaydi — bu jismoniy shartnoma/pasport nusxasi orqali hal qilinishi kerak
+- Telegram Mini App **faqat https bilan ishlaydi**
+- Ma'lumotlar hozircha oddiy `data.json` faylida saqlanadi
+- Jihoz shikastlanishi/qaytmasligi bot orqali nazorat qilinmaydi
 
 ## Keyingi qadamlar (hozircha qilinmagan)
-- Payme/Click avtomatik to'lov integratsiyasi
-- Admin uchun to'liq statistika sahifasi (hozircha faqat Telegram xabarlar orqali boshqariladi)
-- Mijozning "Mening buyurtmalarim" sahifasi
+- Payme/Click avtomatik to'lov integratsiyasi (merchant hisob kerak)

@@ -29,6 +29,9 @@ function createBot(token, webAppUrl, adminChatId, adminTelegramId) {
       `Daromad: ${s.clubRevenue.toLocaleString()} so'm\n\n` +
       `🏠 Ijara: ${s.rentalOrdersTotal} ta buyurtma, ${s.rentalConfirmed} ta tasdiqlangan\n` +
       `Daromad: ${s.rentalRevenue.toLocaleString()} so'm\n\n` +
+      `💻 Onlayn daromad: ${s.onlineRevenue.toLocaleString()} so'm\n` +
+      `🧾 Oflayn daromad: ${s.offlineRevenue.toLocaleString()} so'm\n` +
+      `💰 Jami daromad: ${s.totalRevenue.toLocaleString()} so'm\n\n` +
       `⏳ To'lov kutilayotgan: ${s.awaitingPayment} ta`
     );
   });

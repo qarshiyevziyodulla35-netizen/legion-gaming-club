@@ -10,14 +10,17 @@
   <div class="container">
     <a href="index.html" onclick="return navHash(this)" class="back-link">← Orqaga</a>
     <h1 class="display" style="font-size:22px;margin:0 0 4px;">🏢 Klubga joy band qilish</h1>
-    <p style="color:var(--text-muted);font-size:13px;margin:0 0 18px;">4 ta konsoldan bo'shini avtomatik tanlaymiz</p>
+    <p style="color:var(--text-muted);font-size:13px;margin:0 0 18px;">Konsolni va bo'sh vaqtni o'zingiz tanlaysiz</p>
 
     <label>Sana</label>
     <input type="date" id="date">
 
+    <label>Konsolni tanlang</label>
+    <div id="consoleGrid" style="display:grid;grid-template-columns:1fr 1fr;gap:8px;"></div>
+
     <label>Boshlanish vaqti</label>
-    <select id="startHour"></select>
-    <p id="scheduleNote" style="font-size:12px;color:var(--text-muted);margin:6px 0 0;">Bandlikni tekshirish...</p>
+    <select id="startHour" disabled></select>
+    <p id="scheduleNote" style="font-size:12px;color:var(--text-muted);margin:6px 0 0;">Avval konsol tanlang</p>
 
     <label>Necha soat</label>
     <select id="hours">
@@ -35,7 +38,7 @@
       <div class="row total"><span>Oldindan to'lov (50%)</span><span id="prepayPrice">-</span></div>
     </div>
 
-    <div class="price-box" id="cardBox" style="margin-top:10px;">
+    <div class="price-box" style="margin-top:10px;">
       <div class="row"><span>To'lov kartasi</span><span id="cardNumber">yuklanmoqda...</span></div>
     </div>
 
@@ -49,6 +52,21 @@
       <a href="orders.html" onclick="return navHash(this)"><span class="icon">🧾</span>Buyurtmalarim</a>
     </div>
   </div>
+
+  <style>
+    .console-card {
+      padding: 12px;
+      border-radius: 12px;
+      border: 1px solid var(--border);
+      background: var(--card);
+      text-align: center;
+      cursor: pointer;
+      font-size: 13px;
+    }
+    .console-card.selected { border-color: var(--gold); background: rgba(242,161,84,0.12); }
+    .console-card .n { font-weight: 700; font-size: 15px; margin-bottom: 2px; }
+    .console-card .s { font-size: 11px; color: var(--text-muted); }
+  </style>
 
   <script src="https://telegram.org/js/telegram-web-app.js"></script>
   <script>
@@ -64,6 +82,14 @@
       window.location.href = el.getAttribute('href') + window.location.hash;
       return false;
     }
+    function getTelegramId() {
+      let id = tg && tg.initDataUnsafe && tg.initDataUnsafe.user ? tg.initDataUnsafe.user.id : null;
+      try {
+        if (id) sessionStorage.setItem('tgId', id);
+        else id = sessionStorage.getItem('tgId');
+      } catch (e) {}
+      return id;
+    }
 
     const HOURLY = 40000;
     const startHourSel = document.getElementById('startHour');
@@ -74,27 +100,58 @@
     }
     document.getElementById('date').valueAsDate = new Date();
 
+    let consoleSchedule = []; // [{consoleId, busyHours:[...]}]
+    let selectedConsole = null;
+
+    function renderConsoleGrid() {
+      const grid = document.getElementById('consoleGrid');
+      grid.innerHTML = consoleSchedule.map(c => `
+        <div class="console-card ${c.consoleId === selectedConsole ? 'selected' : ''}" onclick="selectConsole(${c.consoleId})">
+          <div class="n">🎮 Konsol ${c.consoleId}</div>
+          <div class="s">${c.busyHours.length ? c.busyHours.length + ' soat band' : "Butun kun bo'sh"}</div>
+        </div>
+      `).join('');
+    }
+
+    function selectConsole(id) {
+      selectedConsole = id;
+      renderConsoleGrid();
+      updateHourOptions();
+    }
+    window.selectConsole = selectConsole;
+
+    function updateHourOptions() {
+      const note = document.getElementById('scheduleNote');
+      if (!selectedConsole) {
+        startHourSel.disabled = true;
+        note.textContent = 'Avval konsol tanlang';
+        return;
+      }
+      startHourSel.disabled = false;
+      const c = consoleSchedule.find(x => x.consoleId === selectedConsole);
+      const busySet = new Set(c ? c.busyHours : []);
+      Array.from(startHourSel.options).forEach(opt => {
+        const h = Number(opt.value);
+        opt.disabled = busySet.has(h);
+        opt.textContent = h + ':00' + (busySet.has(h) ? ' (band)' : '');
+      });
+      note.textContent = busySet.size
+        ? `Konsol ${selectedConsole}ning band soatlari: ${[...busySet].map(h => h + ':00').join(', ')}`
+        : `Konsol ${selectedConsole} butun kun bo'sh ✅`;
+    }
+
     async function loadSchedule() {
       const date = document.getElementById('date').value;
-      const note = document.getElementById('scheduleNote');
-      note.textContent = 'Bandlikni tekshirish...';
       try {
-        const res = await fetch('/api/schedule?kind=club&date=' + date);
-        const schedule = await res.json();
-        const busyHours = schedule.filter(s => s.free === 0).map(s => s.hour + ':00');
-        Array.from(startHourSel.options).forEach(opt => {
-          const slot = schedule.find(s => s.hour === Number(opt.value));
-          opt.disabled = slot && slot.free === 0;
-          opt.textContent = opt.value + ':00' + (slot && slot.free === 0 ? ' (band)' : '');
-        });
-        note.textContent = busyHours.length
-          ? `Band soatlar: ${busyHours.join(', ')}`
-          : "Tanlangan kunda hamma soat bo'sh ✅";
+        const res = await fetch('/api/club-console-hours?date=' + date);
+        consoleSchedule = await res.json();
+        renderConsoleGrid();
+        updateHourOptions();
       } catch (e) {
-        note.textContent = '';
+        document.getElementById('scheduleNote').textContent = '';
       }
     }
-    document.getElementById('date').addEventListener('change', loadSchedule);
+    document.getElementById('date').addEventListener('change', () => { selectedConsole = null; loadSchedule(); });
     loadSchedule();
 
     function updatePrice() {
@@ -121,39 +178,37 @@
       const startHour = document.getElementById('startHour').value;
       const hours = document.getElementById('hours').value;
       const phone = document.getElementById('phone').value;
+      const telegramId = getTelegramId();
       try { sessionStorage.setItem('myPhone', phone); } catch (e) {}
-      // Telegram foydalanuvchi ID'sini olish — birinchi marta topilganda saqlab qo'yamiz,
-    // keyingi sahifalarda (agar hash orqali kelmasa ham) sessionStorage'dan o'qiymiz
-    function getTelegramId() {
-      let id = tg && tg.initDataUnsafe && tg.initDataUnsafe.user ? tg.initDataUnsafe.user.id : null;
-      try {
-        if (id) sessionStorage.setItem('tgId', id);
-        else id = sessionStorage.getItem('tgId');
-      } catch (e) {}
-      return id;
-    }
-    const telegramId = getTelegramId();
 
       if (!date || !phone) {
         alert("Iltimos, sana va telefon raqamni kiriting");
+        return;
+      }
+      if (!selectedConsole) {
+        alert("Iltimos, konsolni tanlang");
         return;
       }
 
       const res = await fetch('/api/club-booking', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ date, startHour, hours, phone, telegramId })
+        body: JSON.stringify({ date, startHour, hours, phone, telegramId, consoleId: selectedConsole })
       });
       const data = await res.json();
       const resultDiv = document.getElementById('result');
 
       if (data.ok) {
         resultDiv.className = 'result-box';
-        resultDiv.innerHTML = `✅ Band qilindi! Buyurtma #${data.booking.id}<br>
+        resultDiv.innerHTML = `✅ Band qilindi! Buyurtma #${data.booking.id}, Konsol ${data.booking.consoleId}<br>
           To'lov: ${data.booking.prepay.toLocaleString()} so'm ni <b>${paymentCardNumber || 'ko\'rsatilgan kartaga'}</b>${paymentCardOwner ? ' (' + paymentCardOwner + ')' : ''} o'tkazing va chek screenshotini shu botga yuboring.`;
+        loadSchedule();
       } else {
         resultDiv.className = 'result-box error';
-        resultDiv.innerHTML = "❌ Kechirasiz, tanlangan vaqtda bo'sh konsol yo'q. Boshqa vaqt tanlang.";
+        resultDiv.innerHTML = data.reason === 'console_busy'
+          ? "❌ Bu konsol tanlangan vaqtda band bo'lib qoldi. Boshqa vaqt yoki konsol tanlang."
+          : "❌ Xatolik yuz berdi. Qayta urinib ko'ring.";
+        loadSchedule();
       }
     }
   </script>

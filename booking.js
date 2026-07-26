@@ -11,29 +11,53 @@ function overlaps(aStart, aEnd, bStart, bEnd) {
   return aStart < bEnd && bStart < aEnd;
 }
 
-// ================= KLUB =================
-
-function findFreeClubConsole(date, startHour, hours) {
-  const data = load();
-  const endHour = startHour + hours;
-  const busyConsoleIds = new Set(
-    data.clubBookings
-      .filter(b => b.date === date && b.status !== 'cancelled' && b.status !== 'expired')
-      .filter(b => overlaps(b.startHour, b.startHour + b.hours, startHour, endHour))
-      .map(b => b.consoleId)
-  );
-  return data.clubConsoles.find(id => !busyConsoleIds.has(id)) || null;
+function isActive(status) {
+  return status !== 'cancelled' && status !== 'expired';
 }
 
-function createClubBooking({ date, startHour, hours, phone, telegramId }) {
+// ================= KLUB =================
+
+// tanlangan konsol shu sana+vaqt oralig'ida bo'shmi
+function isClubConsoleFree(date, startHour, hours, consoleId, excludeId) {
   const data = load();
-  const consoleId = findFreeClubConsole(date, startHour, hours);
-  if (!consoleId) return { ok: false, reason: 'no_free_console' };
+  const endHour = startHour + hours;
+  return !data.clubBookings.some(b =>
+    b.id !== excludeId &&
+    b.consoleId === consoleId &&
+    b.date === date &&
+    isActive(b.status) &&
+    overlaps(b.startHour, b.startHour + b.hours, startHour, endHour)
+  );
+}
+
+// har bir konsol uchun, tanlangan sanada qaysi soatlar band (9-22 oralig'ida)
+function getClubConsoleHours(date) {
+  const data = load();
+  const active = data.clubBookings.filter(b => b.date === date && isActive(b.status));
+  return data.clubConsoles.map(consoleId => {
+    const busyHours = [];
+    for (let h = 9; h <= 22; h++) {
+      const busy = active.some(b => b.consoleId === consoleId && overlaps(b.startHour, b.startHour + b.hours, h, h + 1));
+      if (busy) busyHours.push(h);
+    }
+    return { consoleId, busyHours };
+  });
+}
+
+function createClubBooking({ date, startHour, hours, phone, telegramId, consoleId }) {
+  const data = load();
+  if (!consoleId || !data.clubConsoles.includes(Number(consoleId))) {
+    return { ok: false, reason: 'console_required' };
+  }
+  consoleId = Number(consoleId);
+  if (!isClubConsoleFree(date, startHour, hours, consoleId)) {
+    return { ok: false, reason: 'console_busy' };
+  }
 
   const total = CLUB_HOURLY_PRICE * hours;
   const prepay = Math.round(total * CLUB_PREPAY_PERCENT);
 
-  const booking = {
+  const item = {
     id: nextId(data),
     consoleId,
     date,
@@ -43,38 +67,96 @@ function createClubBooking({ date, startHour, hours, phone, telegramId }) {
     telegramId,
     total,
     prepay,
+    source: 'online',
     status: 'awaiting_payment', // awaiting_payment -> confirmed -> cancelled/expired
     createdAt: Date.now()
   };
-  data.clubBookings.push(booking);
+  data.clubBookings.push(item);
   save(data);
-  return { ok: true, booking };
+  return { ok: true, booking: item };
+}
+
+// admin tomonidan kiritiladigan oflayn (joyida to'langan) klub bandligi
+function createOfflineClubBooking({ date, startHour, hours, consoleId, phone, paidAmount }) {
+  const data = load();
+  consoleId = Number(consoleId);
+  if (!data.clubConsoles.includes(consoleId)) return { ok: false, reason: 'bad_console' };
+  if (!isClubConsoleFree(date, startHour, hours, consoleId)) return { ok: false, reason: 'console_busy' };
+
+  const total = paidAmount != null && paidAmount !== '' ? Number(paidAmount) : CLUB_HOURLY_PRICE * hours;
+  const item = {
+    id: nextId(data),
+    consoleId,
+    date,
+    startHour,
+    hours,
+    phone: phone || 'Oflayn mijoz',
+    telegramId: null,
+    total,
+    prepay: total,
+    source: 'offline',
+    status: 'confirmed',
+    createdAt: Date.now()
+  };
+  data.clubBookings.push(item);
+  save(data);
+  return { ok: true, booking: item };
 }
 
 // ================= IJARA =================
 
-function findFreeRentalConsole(date, startHour, hours) {
+function isRentalConsoleFree(date, startHour, hours, consoleId, excludeId) {
   const data = load();
   const endHour = startHour + hours;
-  const busyConsoleIds = new Set(
-    data.rentalOrders
-      .filter(o => o.date === date && o.status !== 'cancelled' && o.status !== 'expired')
-      .filter(o => overlaps(o.startHour, o.startHour + o.hours, startHour, endHour))
-      .map(o => o.consoleId)
+  return !data.rentalOrders.some(o =>
+    o.id !== excludeId &&
+    o.consoleId === consoleId &&
+    isActive(o.status) &&
+    (() => {
+      const start = new Date(o.date + 'T00:00:00');
+      start.setHours(o.startHour);
+      const end = start.getTime() + o.hours * 3600 * 1000;
+      const reqStart = new Date(date + 'T00:00:00');
+      reqStart.setHours(startHour);
+      const reqEnd = reqStart.getTime() + hours * 3600 * 1000;
+      return reqStart.getTime() < end && start.getTime() < reqEnd;
+    })()
   );
-  return data.rentalConsoles.find(id => !busyConsoleIds.has(id)) || null;
 }
 
-function createRentalOrder({ date, startHour, hours, address, phone, telegramId }) {
+// har bir ijara konsoli tanlangan sanada band/bo'sh
+function getRentalConsoleAvailability(date) {
   const data = load();
-  const consoleId = findFreeRentalConsole(date, startHour, hours);
-  if (!consoleId) return { ok: false, reason: 'no_free_console' };
+  const active = data.rentalOrders.filter(o => isActive(o.status));
+  const checkMoment = new Date(date + 'T12:00:00').getTime();
+
+  return data.rentalConsoles.map(consoleId => {
+    const busyOrder = active.find(o => {
+      if (o.consoleId !== consoleId) return false;
+      const start = new Date(o.date + 'T00:00:00');
+      start.setHours(o.startHour);
+      const end = start.getTime() + o.hours * 3600 * 1000;
+      return checkMoment >= start.getTime() && checkMoment <= end;
+    });
+    return { consoleId, busy: !!busyOrder };
+  });
+}
+
+function createRentalOrder({ date, startHour, hours, address, phone, telegramId, consoleId }) {
+  const data = load();
+  if (!consoleId || !data.rentalConsoles.includes(Number(consoleId))) {
+    return { ok: false, reason: 'console_required' };
+  }
+  consoleId = Number(consoleId);
+  if (!isRentalConsoleFree(date, startHour, hours, consoleId)) {
+    return { ok: false, reason: 'console_busy' };
+  }
 
   const days = Math.max(1, Math.ceil(hours / 24));
   const total = RENTAL_DAILY_PRICE * days;
   const prepay = Math.round(total * RENTAL_PREPAY_PERCENT); // to'liq oldindan = garov vazifasini ham bajaradi
 
-  const order = {
+  const item = {
     id: nextId(data),
     consoleId,
     date,
@@ -85,12 +167,43 @@ function createRentalOrder({ date, startHour, hours, address, phone, telegramId 
     telegramId,
     total,
     prepay,
+    source: 'online',
     status: 'awaiting_payment',
     createdAt: Date.now()
   };
-  data.rentalOrders.push(order);
+  data.rentalOrders.push(item);
   save(data);
-  return { ok: true, order };
+  return { ok: true, order: item };
+}
+
+// admin tomonidan kiritiladigan oflayn ijara buyurtmasi
+function createOfflineRentalOrder({ date, startHour, hours, consoleId, address, phone, paidAmount }) {
+  const data = load();
+  consoleId = Number(consoleId);
+  if (!data.rentalConsoles.includes(consoleId)) return { ok: false, reason: 'bad_console' };
+  if (!isRentalConsoleFree(date, startHour, hours, consoleId)) return { ok: false, reason: 'console_busy' };
+
+  const days = Math.max(1, Math.ceil(hours / 24));
+  const total = paidAmount != null && paidAmount !== '' ? Number(paidAmount) : RENTAL_DAILY_PRICE * days;
+
+  const item = {
+    id: nextId(data),
+    consoleId,
+    date,
+    startHour,
+    hours,
+    address: address || 'Oflayn',
+    phone: phone || 'Oflayn mijoz',
+    telegramId: null,
+    total,
+    prepay: total,
+    source: 'offline',
+    status: 'confirmed',
+    createdAt: Date.now()
+  };
+  data.rentalOrders.push(item);
+  save(data);
+  return { ok: true, order: item };
 }
 
 // ================= UMUMIY =================
@@ -141,111 +254,6 @@ function getOrdersByTelegramId(telegramId) {
   };
 }
 
-// bugungi bo'sh konsollar soni (dashboard uchun)
-function getTodayAvailability() {
-  const data = load();
-  const today = new Date().toISOString().slice(0, 10);
-  const busyClub = new Set(
-    data.clubBookings.filter(b => b.date === today && !['cancelled', 'expired'].includes(b.status)).map(b => b.consoleId)
-  );
-  const busyRental = new Set(
-    data.rentalOrders.filter(o => o.date === today && !['cancelled', 'expired'].includes(o.status)).map(o => o.consoleId)
-  );
-  return {
-    totalClub: data.clubConsoles.length,
-    freeClub: data.clubConsoles.filter(id => !busyClub.has(id)).length,
-    totalRental: data.rentalConsoles.length,
-    freeRental: data.rentalConsoles.filter(id => !busyRental.has(id)).length
-  };
-}
-
-// admin uchun umumiy statistika
-function getStats() {
-  const data = load();
-  const confirmedClub = data.clubBookings.filter(b => b.status === 'confirmed');
-  const confirmedRental = data.rentalOrders.filter(o => o.status === 'confirmed');
-  const sum = arr => arr.reduce((s, x) => s + x.total, 0);
-
-  return {
-    clubBookingsTotal: data.clubBookings.length,
-    clubConfirmed: confirmedClub.length,
-    clubRevenue: sum(confirmedClub),
-    rentalOrdersTotal: data.rentalOrders.length,
-    rentalConfirmed: confirmedRental.length,
-    rentalRevenue: sum(confirmedRental),
-    awaitingPayment:
-      data.clubBookings.filter(b => b.status === 'awaiting_payment').length +
-      data.rentalOrders.filter(o => o.status === 'awaiting_payment').length
-  };
-}
-
-// klub jadvali: har bir soat uchun nechta konsol bo'sh (9:00-22:00)
-function getClubSchedule(date) {
-  const data = load();
-  const active = data.clubBookings.filter(b => b.date === date && !['cancelled', 'expired'].includes(b.status));
-  const hoursArr = [];
-  for (let h = 9; h <= 22; h++) {
-    const busy = new Set(
-      active.filter(b => overlaps(b.startHour, b.startHour + b.hours, h, h + 1)).map(b => b.consoleId)
-    );
-    hoursArr.push({ hour: h, free: data.clubConsoles.length - busy.size, total: data.clubConsoles.length });
-  }
-  return hoursArr;
-}
-
-// ijara jadvali: tanlangan sanada har bir ijara konsoli band/bo'sh
-function getRentalSchedule(date) {
-  const data = load();
-  const active = data.rentalOrders.filter(o => !['cancelled', 'expired'].includes(o.status));
-  const checkMoment = new Date(date + 'T12:00:00').getTime();
-
-  return data.rentalConsoles.map(consoleId => {
-    const busyOrder = active.find(o => {
-      if (o.consoleId !== consoleId) return false;
-      const start = new Date(o.date + 'T00:00:00');
-      start.setHours(o.startHour);
-      const end = start.getTime() + o.hours * 3600 * 1000;
-      return checkMoment >= start.getTime() && checkMoment <= end;
-    });
-    return { consoleId, busy: !!busyOrder };
-  });
-}
-
-// admin uchun: barcha buyurtmalar (klub + ijara)
-function getAllOrders() {
-  const data = load();
-  return { club: data.clubBookings, rental: data.rentalOrders };
-}
-
-// har bir konsolning HOZIRGI (shu daqiqadagi) holati — bosh sahifa uchun
-function getLiveConsoleStatus() {
-  const data = load();
-  const now = new Date();
-  const today = now.toISOString().slice(0, 10);
-  const nowHour = now.getHours() + now.getMinutes() / 60;
-
-  const club = data.clubConsoles.map(id => {
-    const active = data.clubBookings.find(b =>
-      b.consoleId === id && b.date === today && !['cancelled', 'expired'].includes(b.status) &&
-      nowHour >= b.startHour && nowHour < b.startHour + b.hours
-    );
-    return { consoleId: id, busy: !!active };
-  });
-
-  const rental = data.rentalConsoles.map(id => {
-    const active = data.rentalOrders.find(o => {
-      if (o.consoleId !== id || ['cancelled', 'expired'].includes(o.status)) return false;
-      const start = new Date(o.date + 'T00:00:00');
-      start.setHours(o.startHour);
-      const end = start.getTime() + o.hours * 3600 * 1000;
-      return now.getTime() >= start.getTime() && now.getTime() <= end;
-    });
-    return { consoleId: id, busy: !!active };
-  });
-
-  return { club, rental };
-}
-
 // mijozning barcha buyurtmalari (telefon raqam bo'yicha — Telegram ID ishlamagan holatlar uchun)
 function getOrdersByPhone(phone) {
   const data = load();
@@ -257,12 +265,44 @@ function getOrdersByPhone(phone) {
   };
 }
 
+// admin uchun umumiy statistika (online/offline ajratilgan holda)
+function getStats() {
+  const data = load();
+  const confirmedClub = data.clubBookings.filter(b => b.status === 'confirmed');
+  const confirmedRental = data.rentalOrders.filter(o => o.status === 'confirmed');
+  const sum = arr => arr.reduce((s, x) => s + x.total, 0);
+  const bySource = (arr, src) => arr.filter(x => (x.source || 'online') === src);
+
+  const allConfirmed = [...confirmedClub, ...confirmedRental];
+
+  return {
+    clubBookingsTotal: data.clubBookings.length,
+    clubConfirmed: confirmedClub.length,
+    clubRevenue: sum(confirmedClub),
+    rentalOrdersTotal: data.rentalOrders.length,
+    rentalConfirmed: confirmedRental.length,
+    rentalRevenue: sum(confirmedRental),
+    awaitingPayment:
+      data.clubBookings.filter(b => b.status === 'awaiting_payment').length +
+      data.rentalOrders.filter(o => o.status === 'awaiting_payment').length,
+    onlineRevenue: sum(bySource(allConfirmed, 'online')),
+    offlineRevenue: sum(bySource(allConfirmed, 'offline')),
+    totalRevenue: sum(allConfirmed)
+  };
+}
+
+// admin uchun: barcha buyurtmalar (klub + ijara)
+function getAllOrders() {
+  const data = load();
+  return { club: data.clubBookings, rental: data.rentalOrders };
+}
+
 module.exports = {
   CLUB_HOURLY_PRICE, RENTAL_DAILY_PRICE,
   createClubBooking, createRentalOrder,
+  createOfflineClubBooking, createOfflineRentalOrder,
   confirmPayment, cancel, expireStalePayments,
-  findFreeClubConsole, findFreeRentalConsole,
-  getOrdersByTelegramId, getOrdersByPhone, getTodayAvailability, getStats,
-  getClubSchedule, getRentalSchedule, getAllOrders,
-  getLiveConsoleStatus
+  getClubConsoleHours, getRentalConsoleAvailability,
+  getOrdersByTelegramId, getOrdersByPhone,
+  getStats, getAllOrders
 };

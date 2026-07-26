@@ -30,22 +30,6 @@
       <span class="hero-price">300 000 so'm / 24 soat</span>
     </a>
 
-    <div class="section-title">
-      <h2>Bandligimiz</h2>
-    </div>
-    <div class="stat-card">
-      <div class="ring" style="--pct: 40%"></div>
-      <div>
-        <p class="label">Bugun bo'sh konsollar</p>
-        <p class="value" id="freeCount">Yuklanmoqda...</p>
-      </div>
-    </div>
-
-    <div class="section-title">
-      <h2>Hozirgi holat</h2>
-    </div>
-    <div id="liveStatus" style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:6px;"></div>
-
     <div class="bottom-nav">
       <a href="index.html" onclick="return navHash(this)" class="active"><span class="icon">🏠</span>Bosh sahifa</a>
       <a href="club.html" onclick="return navHash(this)"><span class="icon">🏢</span>Klub</a>
@@ -70,25 +54,6 @@
       window.location.href = el.getAttribute('href') + window.location.hash;
       return false;
     }
-
-    fetch('/api/availability')
-      .then(r => r.json())
-      .then(d => {
-        document.getElementById('freeCount').textContent =
-          `Klub: ${d.freeClub}/${d.totalClub} · Ijara: ${d.freeRental}/${d.totalRental}`;
-      })
-      .catch(() => { document.getElementById('freeCount').textContent = '—'; });
-
-    fetch('/api/live-status')
-      .then(r => r.json())
-      .then(d => {
-        const badge = (label, busy) => `<div style="padding:8px 12px;border-radius:10px;background:${busy ? 'rgba(255,84,112,0.15)' : 'rgba(80,200,120,0.15)'};color:${busy ? '#ff8fa3' : '#7be3a0'};font-size:12px;font-weight:600;">${label}: ${busy ? '🔴 band' : '🟢 bo\'sh'}</div>`;
-        let html = '';
-        d.club.forEach((c, i) => html += badge('Klub #' + (i + 1), c.busy));
-        d.rental.forEach((c, i) => html += badge('Ijara #' + (i + 1), c.busy));
-        document.getElementById('liveStatus').innerHTML = html;
-      })
-      .catch(() => {});
   </script>
 </body>
 </html>

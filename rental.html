@@ -10,14 +10,16 @@
   <div class="container">
     <a href="index.html" onclick="return navHash(this)" class="back-link">← Orqaga</a>
     <h1 class="display" style="font-size:22px;margin:0 0 4px;">🏠 Uyga buyurtma qilish</h1>
-    <p style="color:var(--text-muted);font-size:13px;margin:0 0 18px;">2 ta ijara konsolidan bo'shini avtomatik tanlaymiz</p>
+    <p style="color:var(--text-muted);font-size:13px;margin:0 0 18px;">Konsolni o'zingiz tanlaysiz</p>
 
     <label>Manzil</label>
     <input type="text" id="address" placeholder="Shahar, ko'cha, uy raqami">
 
     <label>Sana</label>
     <input type="date" id="date">
-    <p id="scheduleNote" style="font-size:12px;color:var(--text-muted);margin:6px 0 0;">Bandlikni tekshirish...</p>
+
+    <label>Konsolni tanlang</label>
+    <div id="consoleGrid" style="display:grid;grid-template-columns:1fr 1fr;gap:8px;"></div>
 
     <label>Boshlanish vaqti</label>
     <select id="startHour"></select>
@@ -53,6 +55,22 @@
     </div>
   </div>
 
+  <style>
+    .console-card {
+      padding: 12px;
+      border-radius: 12px;
+      border: 1px solid var(--border);
+      background: var(--card);
+      text-align: center;
+      cursor: pointer;
+      font-size: 13px;
+    }
+    .console-card.selected { border-color: var(--gold); background: rgba(242,161,84,0.12); }
+    .console-card.busy { opacity: 0.5; cursor: not-allowed; }
+    .console-card .n { font-weight: 700; font-size: 15px; margin-bottom: 2px; }
+    .console-card .s { font-size: 11px; color: var(--text-muted); }
+  </style>
+
   <script src="https://telegram.org/js/telegram-web-app.js"></script>
   <script>
     const tg = window.Telegram && window.Telegram.WebApp;
@@ -62,10 +80,17 @@
       tg.BackButton.onClick(() => { window.location.href = 'index.html' + window.location.hash; });
     }
 
-    // Sahifalar orasida o'tganda Telegram foydalanuvchi ma'lumotini (initData) yo'qotmaslik uchun
     function navHash(el) {
       window.location.href = el.getAttribute('href') + window.location.hash;
       return false;
+    }
+    function getTelegramId() {
+      let id = tg && tg.initDataUnsafe && tg.initDataUnsafe.user ? tg.initDataUnsafe.user.id : null;
+      try {
+        if (id) sessionStorage.setItem('tgId', id);
+        else id = sessionStorage.getItem('tgId');
+      } catch (e) {}
+      return id;
     }
 
     const DAILY = 300000;
@@ -77,23 +102,39 @@
     }
     document.getElementById('date').valueAsDate = new Date();
 
-    async function loadSchedule() {
-      const date = document.getElementById('date').value;
-      const note = document.getElementById('scheduleNote');
-      note.textContent = 'Bandlikni tekshirish...';
-      try {
-        const res = await fetch('/api/schedule?kind=rental&date=' + date);
-        const schedule = await res.json();
-        const freeCount = schedule.filter(s => !s.busy).length;
-        note.textContent = freeCount > 0
-          ? `Tanlangan sanada ${freeCount}/${schedule.length} konsol bo'sh ✅`
-          : "Tanlangan sanada barcha konsollar band ❌";
-      } catch (e) {
-        note.textContent = '';
-      }
+    let rentalAvailability = []; // [{consoleId, busy}]
+    let selectedConsole = null;
+
+    function renderConsoleGrid() {
+      const grid = document.getElementById('consoleGrid');
+      grid.innerHTML = rentalAvailability.map(c => `
+        <div class="console-card ${c.consoleId === selectedConsole ? 'selected' : ''} ${c.busy ? 'busy' : ''}"
+             onclick="${c.busy ? '' : 'selectConsole(' + c.consoleId + ')'}">
+          <div class="n">🎮 Konsol ${c.consoleId}</div>
+          <div class="s">${c.busy ? '🔴 band' : "🟢 bo'sh"}</div>
+        </div>
+      `).join('');
     }
-    document.getElementById('date').addEventListener('change', loadSchedule);
-    loadSchedule();
+
+    function selectConsole(id) {
+      selectedConsole = id;
+      renderConsoleGrid();
+    }
+    window.selectConsole = selectConsole;
+
+    async function loadAvailability() {
+      const date = document.getElementById('date').value;
+      try {
+        const res = await fetch('/api/rental-console-availability?date=' + date);
+        rentalAvailability = await res.json();
+        if (selectedConsole && rentalAvailability.find(c => c.consoleId === selectedConsole && c.busy)) {
+          selectedConsole = null;
+        }
+        renderConsoleGrid();
+      } catch (e) {}
+    }
+    document.getElementById('date').addEventListener('change', () => { selectedConsole = null; loadAvailability(); });
+    loadAvailability();
 
     function updatePrice() {
       const days = Number(document.getElementById('days').value);
@@ -121,39 +162,37 @@
       const days = Number(document.getElementById('days').value);
       const hours = days * 24;
       const phone = document.getElementById('phone').value;
+      const telegramId = getTelegramId();
       try { sessionStorage.setItem('myPhone', phone); } catch (e) {}
-      // Telegram foydalanuvchi ID'sini olish — birinchi marta topilganda saqlab qo'yamiz,
-    // keyingi sahifalarda (agar hash orqali kelmasa ham) sessionStorage'dan o'qiymiz
-    function getTelegramId() {
-      let id = tg && tg.initDataUnsafe && tg.initDataUnsafe.user ? tg.initDataUnsafe.user.id : null;
-      try {
-        if (id) sessionStorage.setItem('tgId', id);
-        else id = sessionStorage.getItem('tgId');
-      } catch (e) {}
-      return id;
-    }
-    const telegramId = getTelegramId();
 
       if (!address || !date || !phone) {
         alert("Iltimos, barcha maydonlarni to'ldiring");
+        return;
+      }
+      if (!selectedConsole) {
+        alert("Iltimos, konsolni tanlang");
         return;
       }
 
       const res = await fetch('/api/rental-order', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ date, startHour, hours, address, phone, telegramId })
+        body: JSON.stringify({ date, startHour, hours, address, phone, telegramId, consoleId: selectedConsole })
       });
       const data = await res.json();
       const resultDiv = document.getElementById('result');
 
       if (data.ok) {
         resultDiv.className = 'result-box';
-        resultDiv.innerHTML = `✅ Buyurtma qabul qilindi! #${data.order.id}<br>
+        resultDiv.innerHTML = `✅ Buyurtma qabul qilindi! #${data.order.id}, Konsol ${data.order.consoleId}<br>
           To'lov: ${data.order.prepay.toLocaleString()} so'm ni <b>${paymentCardNumber || 'ko\'rsatilgan kartaga'}</b>${paymentCardOwner ? ' (' + paymentCardOwner + ')' : ''} o'tkazing va chek screenshotini shu botga yuboring.`;
+        loadAvailability();
       } else {
         resultDiv.className = 'result-box error';
-        resultDiv.innerHTML = "❌ Kechirasiz, tanlangan sanada bo'sh konsol yo'q. Boshqa sana tanlang.";
+        resultDiv.innerHTML = data.reason === 'console_busy'
+          ? "❌ Bu konsol tanlangan sanada band bo'lib qoldi. Boshqa konsol yoki sana tanlang."
+          : "❌ Xatolik yuz berdi. Qayta urinib ko'ring.";
+        loadAvailability();
       }
     }
   </script>
